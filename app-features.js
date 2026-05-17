@@ -261,6 +261,7 @@ async function deleteUser(id, username) {
 
 // === REKAP PEMBAYARAN ===
 let rekapFilterInitialized = false;
+let rekapDataCache = [];
 
 function initRekapFilter() {
     if (rekapFilterInitialized) return;
@@ -268,7 +269,7 @@ function initRekapFilter() {
     if (!sel) return;
     sel.innerHTML = '<option value="">Semua Kecamatan</option>';
     for (let c in wilayahMajene) sel.innerHTML += `<option value="${c}">${c} - ${wilayahMajene[c].name}</option>`;
-    sel.onchange = () => loadRekapPembayaran();
+    sel.onchange = () => renderRekapTable();
     rekapFilterInitialized = true;
 }
 
@@ -281,56 +282,96 @@ async function loadRekapPembayaran() {
     try {
         const { data, error } = await _supabase.from('belumsetor').select('*').eq('status', 'Sudah Setor');
         if (error) throw error;
-        const rows = data || [];
-
-        // Get filter
-        const filterKec = $('filter-rekap-kecamatan')?.value || '';
-
-        // Group by kecamatan + kelurahan + lingkungan
-        const grouped = {};
-        rows.forEach(t => {
-            const kel = (t.wilayah || 'Umum').toUpperCase();
-            const lin = (t.lingkungan || 'Umum').toUpperCase();
-            const kecCode = getKecamatanByKelurahan(t.wilayah);
-            const kecName = kecCode && wilayahMajene[kecCode] ? wilayahMajene[kecCode].name.toUpperCase() : 'LAINNYA';
-
-            // Apply filter
-            if (filterKec && kecCode !== filterKec) return;
-
-            const key = `${kecName}__${kel}__${lin}`;
-            if (!grouped[key]) grouped[key] = { kecamatan: kecName, kelurahan: kel, lingkungan: lin, total: 0 };
-            grouped[key].total += parseInt(t.jumlah) || 0;
-        });
-
-        // Sort by kecamatan, kelurahan, lingkungan
-        const sortedKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
-
-        if (!sortedKeys.length) {
-            body.innerHTML = '<tr><td colspan="5" style="padding:3rem;text-align:center;color:#cbd5e1;font-weight:700;font-size:0.65rem;text-transform:uppercase">Belum ada data realisasi pembayaran</td></tr>';
-            $('rekap-grand-total').innerText = 'Rp 0';
-            return;
-        }
-
-        let grandTotal = 0;
-        body.innerHTML = '';
-        sortedKeys.forEach((key, idx) => {
-            const g = grouped[key];
-            grandTotal += g.total;
-            body.innerHTML += `<tr>
-                <td style="padding:1rem 1.75rem;text-align:center;font-weight:700;color:#64748b">${idx + 1}</td>
-                <td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${g.kecamatan}</td>
-                <td style="padding:1rem 1.75rem;font-weight:700;color:#475569;text-transform:uppercase">${g.kelurahan}</td>
-                <td style="padding:1rem 1.75rem;font-weight:600;color:#64748b;text-transform:uppercase">${g.lingkungan}</td>
-                <td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--success)">${formatIDR(g.total)}</td>
-            </tr>`;
-        });
-        $('rekap-grand-total').innerText = formatIDR(grandTotal);
-
+        rekapDataCache = data || [];
+        renderRekapTable();
     } catch (err) {
         console.error('loadRekapPembayaran:', err);
         body.innerHTML = `<tr><td colspan="5" style="padding:2rem;text-align:center;color:#ef4444;font-weight:700">Gagal memuat data: ${err.message || ''}</td></tr>`;
     }
 }
+
+function renderRekapTable() {
+    const body = $('rekap-table-body');
+    if (!body) return;
+    const filterKec = $('filter-rekap-kecamatan')?.value || '';
+
+    // Group by kecamatan + kelurahan
+    const grouped = {};
+    rekapDataCache.forEach(t => {
+        const kel = (t.wilayah || 'Umum').toUpperCase();
+        const kecCode = getKecamatanByKelurahan(t.wilayah);
+        const kecName = kecCode && wilayahMajene[kecCode] ? wilayahMajene[kecCode].name.toUpperCase() : 'LAINNYA';
+
+        if (filterKec && kecCode !== filterKec) return;
+
+        const key = `${kecName}__${kel}`;
+        if (!grouped[key]) grouped[key] = { kecamatan: kecName, kelurahan: kel, total: 0 };
+        grouped[key].total += parseInt(t.jumlah) || 0;
+    });
+
+    const sortedKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+
+    if (!sortedKeys.length) {
+        body.innerHTML = '<tr><td colspan="5" style="padding:3rem;text-align:center;color:#cbd5e1;font-weight:700;font-size:0.65rem;text-transform:uppercase">Belum ada data realisasi pembayaran</td></tr>';
+        $('rekap-grand-total').innerText = 'Rp 0';
+        return;
+    }
+
+    let grandTotal = 0;
+    body.innerHTML = '';
+    sortedKeys.forEach((key, idx) => {
+        const g = grouped[key];
+        grandTotal += g.total;
+        const safeKey = key.replace(/'/g, "\\'");
+        body.innerHTML += `<tr>
+            <td style="padding:1rem 1.75rem;text-align:center;font-weight:700;color:#64748b">${idx + 1}</td>
+            <td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${g.kecamatan}</td>
+            <td style="padding:1rem 1.75rem;font-weight:700;color:#475569;text-transform:uppercase">${g.kelurahan}</td>
+            <td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--success)">${formatIDR(g.total)}</td>
+            <td style="padding:1rem 1.75rem;text-align:center"><button onclick="showRekapLingkungan('${safeKey}')" class="btn btn-primary btn-sm"><i class="fas fa-list"></i> Rincian</button></td>
+        </tr>`;
+    });
+    $('rekap-grand-total').innerText = formatIDR(grandTotal);
+}
+
+function showRekapLingkungan(key) {
+    const [kecName, kelName] = key.split('__');
+    $('rekap-detail-kecamatan').innerText = kecName;
+    $('rekap-detail-kelurahan').innerText = kelName;
+
+    // Filter data for this kelurahan and group by lingkungan
+    const filtered = rekapDataCache.filter(t => {
+        const kel = (t.wilayah || 'Umum').toUpperCase();
+        return kel === kelName;
+    });
+
+    const lingGrouped = {};
+    filtered.forEach(t => {
+        const lin = (t.lingkungan || 'Umum').toUpperCase();
+        if (!lingGrouped[lin]) lingGrouped[lin] = { lingkungan: lin, total: 0 };
+        lingGrouped[lin].total += parseInt(t.jumlah) || 0;
+    });
+
+    const sortedLings = Object.keys(lingGrouped).sort();
+    const body = $('rekap-lingkungan-body');
+    body.innerHTML = '';
+    let totalKel = 0;
+
+    sortedLings.forEach((lin, idx) => {
+        const g = lingGrouped[lin];
+        totalKel += g.total;
+        body.innerHTML += `<tr>
+            <td style="padding:0.6rem 0.75rem;text-align:center;font-weight:700;color:#64748b">${idx + 1}</td>
+            <td style="padding:0.6rem 0.75rem;font-weight:700;color:#334155;text-transform:uppercase">${g.lingkungan}</td>
+            <td style="padding:0.6rem 0.75rem;text-align:right;font-weight:900;color:var(--success)">${formatIDR(g.total)}</td>
+        </tr>`;
+    });
+
+    $('rekap-lingkungan-total').innerText = formatIDR(totalKel);
+    $('rekap-lingkungan-modal').classList.add('open');
+}
+
+function closeRekapLingkunganModal() { $('rekap-lingkungan-modal').classList.remove('open'); }
 
 // === INIT ===
 async function validateSession() {
