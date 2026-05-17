@@ -154,14 +154,15 @@
 <th style="text-align:center;width:5%">No</th>
 <th>Kecamatan</th>
 <th>Kelurahan</th>
-<th>Lingkungan</th>
 <th style="text-align:right">Realisasi</th>
+<th style="text-align:center">Aksi</th>
 </tr></thead>
 <tbody id="rekap-table-body"></tbody>
 <tfoot style="background:var(--primary);color:#fff">
 <tr>
-<td colspan="4" style="padding:1rem 1.75rem;font-weight:900;font-size:0.75rem;text-transform:uppercase">Total Realisasi</td>
+<td colspan="3" style="padding:1rem 1.75rem;font-weight:900;font-size:0.75rem;text-transform:uppercase">Total Realisasi</td>
 <td id="rekap-grand-total" style="padding:1rem 1.75rem;text-align:right;font-weight:900;font-size:1.1rem">Rp 0</td>
+<td></td>
 </tr>
 </tfoot>
 </table>
@@ -245,6 +246,24 @@
 <h3 id="modal-title" style="font-size:1.3rem;font-weight:900;margin-bottom:0.5rem">Konfirmasi</h3>
 <p id="modal-desc" style="color:#64748b;font-size:0.85rem;margin-bottom:1.75rem;line-height:1.6"></p>
 <div class="modal-footer"><button onclick="closeModal()" class="btn btn-outline">Batal</button><button id="modal-confirm" class="btn btn-primary">Lanjutkan</button></div>
+</div>
+</div>
+
+<!-- MODAL: Rekap Lingkungan -->
+<div id="rekap-lingkungan-modal" class="modal-overlay">
+<div class="modal-card">
+<div class="modal-header"><h3><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i> Rincian Per Lingkungan</h3><button onclick="closeRekapLingkunganModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<div class="info-box" style="display:flex;justify-content:space-between">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kecamatan</div><div id="rekap-detail-kecamatan" style="font-weight:900">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kelurahan</div><div id="rekap-detail-kelurahan" style="font-weight:900">---</div></div>
+</div>
+<div class="modal-body">
+<table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem;text-align:center;width:8%">No</th><th style="padding:0.5rem 0.75rem">Lingkungan</th><th style="padding:0.5rem 0.75rem;text-align:right">Realisasi</th></tr></thead><tbody id="rekap-lingkungan-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td colspan="2" style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Kelurahan</td><td id="rekap-lingkungan-total" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td></tr></tfoot></table>
+</div>
+<div class="modal-footer">
+<button onclick="closeRekapLingkunganModal()" class="btn btn-outline">Tutup</button>
+</div>
 </div>
 </div>
 
