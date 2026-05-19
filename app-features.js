@@ -639,6 +639,107 @@ function showRekapLingkungan(key) {
     $('rekap-lingkungan-modal').classList.add('open');
 }
 
+// === LAPORAN NOP BARU ===
+let nopBaruDataCache = [];
+let nopBaruFilterInitialized = false;
+
+function initLaporanNopBaruFilter() {
+    if (nopBaruFilterInitialized) return;
+    const sel = $('filter-nopbaru-kecamatan');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Semua Kecamatan</option>';
+    for (let c in wilayahMajene) sel.innerHTML += `<option value="${c}">${c} - ${wilayahMajene[c].name}</option>`;
+    
+    // Kunci untuk petugas
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'admin');
+    if (!isAdmin && currentUser && currentUser.wilayah && currentUser.wilayah.toLowerCase() !== 'admin') {
+        const kecCode = getKecamatanByKelurahan(currentUser.wilayah);
+        if (kecCode) {
+            sel.value = kecCode;
+            sel.disabled = true;
+        }
+    }
+
+    sel.onchange = () => renderLaporanNopBaruTable();
+    nopBaruFilterInitialized = true;
+}
+
+async function loadLaporanNopBaru() {
+    initLaporanNopBaruFilter();
+    const body = $('nopbaru-table-body');
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="6" style="padding:2rem;text-align:center;color:#94a3b8"><i class="fas fa-circle-notch animate-spin"></i> Memuat Laporan NOP Baru...</td></tr>';
+
+    try {
+        const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'admin');
+        let q = _supabase.from('belumsetor').select('*').eq('is_manual', true);
+        
+        // Filter wilayah untuk non-admin
+        if (!isAdmin && currentUser && currentUser.wilayah && currentUser.wilayah.toLowerCase() !== 'admin') {
+            q = q.eq('wilayah', currentUser.wilayah);
+        }
+
+        const { data, error } = await q.order('created_at', { ascending: false });
+        if (error) throw error;
+        nopBaruDataCache = data || [];
+        renderLaporanNopBaruTable();
+    } catch (err) {
+        console.error('loadLaporanNopBaru:', err);
+        body.innerHTML = `<tr><td colspan="6" style="padding:2rem;text-align:center;color:#ef4444;font-weight:700">Gagal memuat data: ${err.message || ''}</td></tr>`;
+    }
+}
+
+function renderLaporanNopBaruTable() {
+    const body = $('nopbaru-table-body');
+    if (!body) return;
+    
+    const filterKec = $('filter-nopbaru-kecamatan')?.value || '';
+    const filterStatus = $('filter-nopbaru-status')?.value || '';
+
+    let rows = nopBaruDataCache;
+
+    if (filterKec) {
+        rows = rows.filter(t => getKecamatanByKelurahan(t.wilayah) === filterKec);
+    }
+    if (filterStatus) {
+        rows = rows.filter(t => t.status === filterStatus);
+    }
+
+    if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="6" style="padding:3rem;text-align:center;color:#cbd5e1;font-weight:700;font-size:0.65rem;text-transform:uppercase">Belum ada NOP Baru yang diinput manual</td></tr>';
+        $('nopbaru-grand-total').innerText = 'Rp 0';
+        return;
+    }
+
+    let grandTotal = 0;
+    body.innerHTML = '';
+    rows.forEach((t, idx) => {
+        grandTotal += parseInt(t.jumlah) || 0;
+        
+        const kecCode = getKecamatanByKelurahan(t.wilayah);
+        const kecName = kecCode && wilayahMajene[kecCode] ? wilayahMajene[kecCode].name.toUpperCase() : 'LAINNYA';
+        
+        let statusBadge = '';
+        if (t.status === 'Belum Setor') statusBadge = `<span style="padding:0.3rem 0.6rem;background:#fef2f2;color:#ef4444;border-radius:9999px;font-size:0.65rem;font-weight:900"><i class="fas fa-hourglass-half"></i> Belum Setor</span>`;
+        else if (t.status === 'Sedang Diverifikasi') statusBadge = `<span style="padding:0.3rem 0.6rem;background:#fffbeb;color:#d97706;border-radius:9999px;font-size:0.65rem;font-weight:900"><i class="fas fa-shield-halved"></i> Diverifikasi</span>`;
+        else statusBadge = `<span style="padding:0.3rem 0.6rem;background:#f0fdf4;color:#22c55e;border-radius:9999px;font-size:0.65rem;font-weight:900"><i class="fas fa-check-double"></i> Lunas</span>`;
+
+        body.innerHTML += `<tr>
+            <td style="padding:1rem 1.75rem;text-align:center;font-weight:700;color:#64748b">${idx + 1}</td>
+            <td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${kecName}</td>
+            <td style="padding:1rem 1.75rem;font-weight:700;color:#475569"><div style="text-transform:uppercase">${t.wilayah || '-'}</div><div style="font-size:0.65rem;color:#94a3b8;margin-top:2px">${t.lingkungan || '-'}</div></td>
+            <td style="padding:1rem 1.75rem">
+                <div style="font-weight:900;color:var(--primary);font-family:'JetBrains Mono',monospace;font-size:0.8rem">${t.nop || '-'}</div>
+                <div style="font-size:0.65rem;color:#475569;font-weight:700;margin-top:4px;text-transform:uppercase"><i class="fas fa-user" style="color:#94a3b8;margin-right:4px"></i> ${t.nama || 'TANPA NAMA'}</div>
+            </td>
+            <td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:#1e293b">${formatIDR(parseInt(t.jumlah) || 0)}</td>
+            <td style="padding:1rem 1.75rem;text-align:center">${statusBadge}</td>
+        </tr>`;
+    });
+
+    $('nopbaru-grand-total').innerText = formatIDR(grandTotal);
+}
+
 function closeRekapLingkunganModal() { $('rekap-lingkungan-modal').classList.remove('open'); }
 
 // === INIT ===
