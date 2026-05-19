@@ -338,37 +338,102 @@ function getKecamatanByKelurahan(kelName) {
     return null;
 }
 
+// === MANUAL INPUT UI LOGIC ===
+function toggleManualInput() {
+    const isManual = $('is-manual-input').checked;
+    const btn = $('btnCari');
+    const container = $('manual-nominals-container');
+    if (isManual) {
+        btn.innerHTML = '<i class="fas fa-plus-circle"></i> Tambahkan ke Tagihan Manual';
+        container.style.display = 'flex';
+        handleNourutInput();
+    } else {
+        btn.innerHTML = '<i class="fas fa-search"></i> Cari Data Tagihan';
+        container.style.display = 'none';
+        container.innerHTML = '';
+    }
+}
+
+function handleNourutInput() {
+    const isManualInput = $('is-manual-input');
+    if (!isManualInput || !isManualInput.checked) return;
+    const urutInput = $('p-nourut').value.trim();
+    const container = $('manual-nominals-container');
+    container.innerHTML = '';
+    if (!urutInput) return;
+    
+    const uruts = urutInput.split(/[, ]+/).filter(x => x.trim());
+    uruts.forEach(urut => {
+        const u = urut.padStart(4, '0');
+        container.innerHTML += `
+            <div style="display:flex;flex-direction:column;gap:0.5rem;padding-bottom:0.75rem;border-bottom:1px solid #e2e8f0;margin-bottom:0.25rem">
+                <label style="font-size:0.75rem;font-weight:900;color:#64748b">Rincian NOP Akhiran <span style="color:var(--primary)">${u}</span></label>
+                <div style="display:grid;grid-template-columns:3fr 2fr;gap:0.5rem">
+                    <input type="text" id="manual-nama-${u}" class="form-input" placeholder="Nama Wajib Pajak" style="padding:0.4rem 0.75rem;border-color:#fcd34d" required>
+                    <input type="number" id="manual-nominal-${u}" class="form-input" placeholder="Nominal Rp..." style="padding:0.4rem 0.75rem;border-color:#fcd34d" required min="1">
+                </div>
+            </div>
+        `;
+    });
+}
+
 // === SEARCH & CART ===
 $('searchForm').onsubmit = async (e) => {
     e.preventDefault();
+    const isManual = $('is-manual-input').checked;
     const btn = $('btnCari'), kec = $('p-kecamatan').value, kel = $('p-kelurahan').value;
     const lin = $('p-lingkungan').value, blok = $('p-blok').value.trim().padStart(3, '0');
     const urutInput = $('p-nourut').value.trim();
     if (!urutInput) return;
     const uruts = urutInput.split(/[, ]+/).filter(x => x.trim());
     const namaKel = wilayahMajene[kec]?.kels[kel]?.name || '';
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch animate-spin"></i> MENCARI...';
+    
+    btn.disabled = true; 
+    btn.innerHTML = '<i class="fas fa-circle-notch animate-spin"></i> MEMPROSES...';
     let added = 0;
+    
     for (let urut of uruts) {
         const u = urut.padStart(4, '0');
         const nopClean = `7602${kec}${kel}${blok}${u}0`, nopDot = `76.02.${kec}.${kel}.${blok}-${u}.0`;
-        try {
-            const { data, error } = await _supabase.from('sppt2026').select('*').in('NOP', [nopClean, nopDot]).maybeSingle();
-            if (error) throw error;
-            if (data) {
-                if (!cartItems.find(c => c.nop === data.NOP)) {
-                    let raw = 0;
-                    const keys = Object.keys(data), fk = keys.find(k => k.toLowerCase() === 'jumlah');
-                    if (fk) raw = data[fk]; else raw = data['PBB_YG_HARUS_DIBAYAR_'] || data['PBB_YG_HARUS_DIBAYAR'] || data['PBB_DIBAYAR'] || 0;
-                    let cs = String(raw).trim().replace(/Rp/gi, '').trim().replace(/[,.]00$/, '').replace(/[^0-9]/g, '');
-                    cartItems.push({ nop: data.NOP, nama: data.NM_WP_SPPT || data.NAMA_WP || 'TANPA NAMA', jumlah: parseInt(cs) || 0, lingkungan: lin, wilayah: namaKel });
-                    added++;
-                }
-            } else showToast(`NOP ${u} tidak ditemukan`, "error");
-        } catch (err) { console.error(err); }
+        
+        if (isManual) {
+            const nominalInput = $(`manual-nominal-${u}`);
+            const namaInput = $(`manual-nama-${u}`);
+            const nominal = nominalInput ? parseInt(nominalInput.value) || 0 : 0;
+            const namaWP = namaInput && namaInput.value.trim() ? namaInput.value.trim() : 'MANUAL - TANPA NAMA';
+            
+            if (!cartItems.find(c => c.nop === nopClean)) {
+                cartItems.push({ 
+                    nop: nopClean, 
+                    nama: namaWP, 
+                    jumlah: nominal, 
+                    lingkungan: lin, 
+                    wilayah: namaKel,
+                    is_manual: true 
+                });
+                added++;
+            }
+        } else {
+            try {
+                const { data, error } = await _supabase.from('sppt2026').select('*').in('NOP', [nopClean, nopDot]).maybeSingle();
+                if (error) throw error;
+                if (data) {
+                    if (!cartItems.find(c => c.nop === data.NOP)) {
+                        let raw = 0;
+                        const keys = Object.keys(data), fk = keys.find(k => k.toLowerCase() === 'jumlah');
+                        if (fk) raw = data[fk]; else raw = data['PBB_YG_HARUS_DIBAYAR_'] || data['PBB_YG_HARUS_DIBAYAR'] || data['PBB_DIBAYAR'] || 0;
+                        let cs = String(raw).trim().replace(/Rp/gi, '').trim().replace(/[,.]00$/, '').replace(/[^0-9]/g, '');
+                        cartItems.push({ nop: data.NOP, nama: data.NM_WP_SPPT || data.NAMA_WP || 'TANPA NAMA', jumlah: parseInt(cs) || 0, lingkungan: lin, wilayah: namaKel });
+                        added++;
+                    }
+                } else showToast(`NOP ${u} tidak ditemukan`, "error");
+            } catch (err) { console.error(err); }
+        }
     }
+    
     if (cartItems.length > 0) { renderCart(); $('search-result').classList.remove('hidden'); if (added > 0) showToast(`${added} data berhasil ditarik`); }
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-search"></i> Cari Data Tagihan';
+    btn.disabled = false; 
+    btn.innerHTML = isManual ? '<i class="fas fa-plus-circle"></i> Tambahkan ke Tagihan Manual' : '<i class="fas fa-search"></i> Cari Data Tagihan';
 };
 
 function renderCart() {
@@ -384,9 +449,14 @@ function removeFromCart(i) { cartItems.splice(i, 1); if (!cartItems.length) $('s
 async function processCart() {
     const btn = $('btnSimpan'); btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch animate-spin"></i> MENYIMPAN...';
     try {
-        const data = cartItems.map(i => ({ nop: i.nop, nama: i.nama, jumlah: i.jumlah, lingkungan: i.lingkungan, wilayah: i.wilayah, petugas: currentUser.username, status: 'Belum Setor', created_at: new Date().toISOString() }));
+        const data = cartItems.map(i => ({ nop: i.nop, nama: i.nama, jumlah: i.jumlah, lingkungan: i.lingkungan, wilayah: i.wilayah, petugas: currentUser.username, status: 'Belum Setor', created_at: new Date().toISOString(), is_manual: i.is_manual || false }));
         const { error: e1 } = await _supabase.from('belumsetor').insert(data); if (e1) throw e1;
-        const { error: e2 } = await _supabase.from('sppt2026').delete().in('NOP', cartItems.map(i => i.nop)); if (e2) throw e2;
+        
+        // Hanya hapus dari sppt2026 jika BUKAN NOP Baru (bukan manual)
+        const regularNops = cartItems.filter(i => !i.is_manual).map(i => i.nop);
+        if (regularNops.length > 0) {
+            const { error: e2 } = await _supabase.from('sppt2026').delete().in('NOP', regularNops); if (e2) throw e2;
+        }
         const _wpCount = cartItems.length, _total = cartItems.reduce((s, i) => s + (parseInt(i.jumlah) || 0), 0), _lin = cartItems[0]?.lingkungan || '-', _wil = cartItems[0]?.wilayah || '-';
         logActivity('SIMPAN_TRANSAKSI', `${_wpCount} WP — ${formatIDR(_total)}`, `${_wil} / ${_lin}`);
         showToast("Transaksi Berhasil Disimpan & Data SPPT Dimutasi!");
