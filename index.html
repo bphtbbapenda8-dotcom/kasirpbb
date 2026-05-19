@@ -39,6 +39,7 @@
 <button id="nav-verifikasi" onclick="switchTab('verifikasi')" class="nav-btn hidden" data-tab="verifikasi"><i class="fas fa-clipboard-check"></i><span>Verifikasi</span></button>
 <button onclick="switchTab('sudah-setor')" class="nav-btn" data-tab="sudah-setor"><i class="fas fa-check-double"></i><span>Riwayat Setoran</span></button>
 <button onclick="switchTab('rekap-pembayaran');loadRekapPembayaran()" class="nav-btn" data-tab="rekap-pembayaran"><i class="fas fa-chart-bar"></i><span>Rekap Pembayaran</span></button>
+<button onclick="switchTab('laporan-nop-baru');loadLaporanNopBaru()" class="nav-btn" data-tab="laporan-nop-baru"><i class="fas fa-file-invoice-dollar"></i><span>Laporan NOP Baru</span></button>
 <button id="nav-users" onclick="switchTab('manajemen-user');loadUsers()" class="nav-btn hidden" data-tab="manajemen-user"><i class="fas fa-users-cog"></i><span>Manajemen User</span></button>
 <button id="nav-log-aktivitas" onclick="switchTab('log-aktivitas');loadLogAktivitas()" class="nav-btn hidden" data-tab="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></button>
 </nav>
@@ -53,6 +54,7 @@
 <button id="mob-verifikasi" onclick="switchTab('verifikasi')" class="mob-btn hidden" data-tab="verifikasi"><i class="fas fa-clipboard-check"></i><span>Verif</span></button>
 <button onclick="switchTab('sudah-setor')" class="mob-btn" data-tab="sudah-setor"><i class="fas fa-history"></i><span>Riwayat</span></button>
 <button onclick="switchTab('rekap-pembayaran');loadRekapPembayaran()" class="mob-btn" data-tab="rekap-pembayaran"><i class="fas fa-chart-bar"></i><span>Rekap</span></button>
+<button onclick="switchTab('laporan-nop-baru');loadLaporanNopBaru()" class="mob-btn" data-tab="laporan-nop-baru"><i class="fas fa-file-invoice-dollar"></i><span>NOP Baru</span></button>
 <button id="mob-users" onclick="switchTab('manajemen-user');loadUsers()" class="mob-btn hidden" data-tab="manajemen-user"><i class="fas fa-users-cog"></i><span>Users</span></button>
 <button id="mob-log-aktivitas" onclick="switchTab('log-aktivitas');loadLogAktivitas()" class="mob-btn hidden" data-tab="log-aktivitas"><i class="fas fa-history"></i><span>Log</span></button>
 </nav>
@@ -94,9 +96,17 @@
 <div><label class="form-label">Lingkungan / Dusun</label><select id="p-lingkungan" required disabled class="form-select"></select></div>
 <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem">
 <div><label class="form-label">Blok (3 Digit)</label><input type="text" id="p-blok" required maxlength="3" class="form-input mono" placeholder="000"></div>
-<div><label class="form-label">Nomor Urut (Pisah Koma)</label><input type="text" id="p-nourut" required class="form-input mono" placeholder="0001, 0002"></div>
+<div><label class="form-label">Nomor Urut (Pisah Koma)</label><input type="text" id="p-nourut" required class="form-input mono" placeholder="0001, 0002" oninput="handleNourutInput()"></div>
 </div>
-<button type="submit" id="btnCari" class="btn btn-dark" style="width:100%;padding:1.1rem"><i class="fas fa-search"></i> Cari Data Tagihan</button>
+<!-- Manual Input Toggle -->
+<div style="margin-top:0.5rem;padding:0.75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;display:flex;align-items:center;gap:0.75rem">
+  <input type="checkbox" id="is-manual-input" style="width:1.2rem;height:1.2rem;accent-color:var(--primary)" onchange="toggleManualInput()">
+  <label for="is-manual-input" style="font-size:0.75rem;font-weight:700;color:#334155;cursor:pointer">Input Manual (NOP Tidak Terdaftar / NOP Baru)</label>
+</div>
+<!-- Nominal Inputs Container -->
+<div id="manual-nominals-container" style="display:none;flex-direction:column;gap:0.75rem;margin-top:0.5rem;padding:1rem;background:#fffbeb;border:1px dashed #fcd34d;border-radius:0.5rem"></div>
+
+<button type="submit" id="btnCari" class="btn btn-dark" style="width:100%;padding:1.1rem;margin-top:1rem"><i class="fas fa-search"></i> Cari Data Tagihan</button>
 </form>
 <div id="search-result" class="hidden" style="padding:0 2rem 2rem">
 <div style="border-radius:var(--radius);overflow:hidden;border:1px solid #e2e8f0">
@@ -177,6 +187,27 @@
 <div class="panel">
 <div class="panel-header"><h3>Manajemen User</h3><button onclick="addNewUser()" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah User</button></div>
 <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Username</th><th>Role</th><th>Wilayah</th><th>Password</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
+</div>
+</section>
+
+<!-- TAB: Laporan NOP Baru -->
+<section id="laporan-nop-baru" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--primary);margin-right:8px"></i>Laporan NOP Baru</h3><button onclick="loadLaporanNopBaru()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+  <div><label class="form-label">Filter Kecamatan</label><select id="filter-nopbaru-kecamatan" class="form-select"></select></div>
+  <div><label class="form-label">Filter Status</label><select id="filter-nopbaru-status" class="form-select" onchange="renderLaporanNopBaruTable()"><option value="">Semua Status</option><option value="Belum Setor">Belum Setor</option><option value="Sedang Diverifikasi">Sedang Diverifikasi</option><option value="Sudah Setor">Sudah Setor</option></select></div>
+</div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr>
+  <th style="text-align:center;width:5%">No</th>
+  <th style="width:15%">Kecamatan</th>
+  <th style="width:15%">Kelurahan / Lingk.</th>
+  <th style="width:25%">NOP & Wajib Pajak</th>
+  <th style="text-align:right">Nominal (Rp)</th>
+  <th style="width:15%;text-align:center">Status</th>
+</tr></thead><tbody id="nopbaru-table-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td colspan="4" style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem;text-align:right">Total Nominal NOP Baru</td><td id="nopbaru-grand-total" style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td><td></td></tr></tfoot>
+</table></div>
 </div>
 </section>
 
