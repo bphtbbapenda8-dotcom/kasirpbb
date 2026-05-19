@@ -40,6 +40,7 @@
 <button onclick="switchTab('sudah-setor')" class="nav-btn" data-tab="sudah-setor"><i class="fas fa-check-double"></i><span>Riwayat Setoran</span></button>
 <button onclick="switchTab('rekap-pembayaran');loadRekapPembayaran()" class="nav-btn" data-tab="rekap-pembayaran"><i class="fas fa-chart-bar"></i><span>Rekap Pembayaran</span></button>
 <button id="nav-users" onclick="switchTab('manajemen-user');loadUsers()" class="nav-btn hidden" data-tab="manajemen-user"><i class="fas fa-users-cog"></i><span>Manajemen User</span></button>
+<button id="nav-log-aktivitas" onclick="switchTab('log-aktivitas');loadLogAktivitas()" class="nav-btn hidden" data-tab="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></button>
 </nav>
 <button onclick="confirmLogout()" class="nav-btn-logout"><i class="fas fa-power-off"></i><span>Keluar</span></button>
 </aside>
@@ -53,6 +54,7 @@
 <button onclick="switchTab('sudah-setor')" class="mob-btn" data-tab="sudah-setor"><i class="fas fa-history"></i><span>Riwayat</span></button>
 <button onclick="switchTab('rekap-pembayaran');loadRekapPembayaran()" class="mob-btn" data-tab="rekap-pembayaran"><i class="fas fa-chart-bar"></i><span>Rekap</span></button>
 <button id="mob-users" onclick="switchTab('manajemen-user');loadUsers()" class="mob-btn hidden" data-tab="manajemen-user"><i class="fas fa-users-cog"></i><span>Users</span></button>
+<button id="mob-log-aktivitas" onclick="switchTab('log-aktivitas');loadLogAktivitas()" class="mob-btn hidden" data-tab="log-aktivitas"><i class="fas fa-history"></i><span>Log</span></button>
 </nav>
 
 <main class="main-content">
@@ -110,13 +112,13 @@
 <!-- TAB: Belum Setor -->
 <section id="setor-list" class="tab-content">
 <div class="panel">
-<div class="panel-header"><h3>Rekap Setoran (Kelurahan & Dusun)</h3><button onclick="refreshData()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="panel-header"><h3><i class="fas fa-layer-group" style="color:var(--primary);margin-right:8px"></i>Rekap Lingkungan (Belum Setor)</h3><button onclick="refreshData()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
 <div class="filter-bar">
 <div><label class="form-label">Filter Kecamatan</label><select id="filter-kecamatan" class="form-select"></select></div>
 <div><label class="form-label">Filter Kelurahan</label><select id="filter-kelurahan" class="form-select" disabled></select></div>
 <div><label class="form-label">Filter Lingkungan</label><select id="filter-lingkungan" class="form-select" disabled></select></div>
 </div>
-<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kelurahan / Desa</th><th>Lingkungan / Dusun</th><th style="text-align:right">Jumlah Uang</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-belum-body"></tbody></table></div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kelurahan / Desa</th><th>Lingkungan / Dusun</th><th style="text-align:center">Jumlah WP</th><th style="text-align:right">Jumlah Uang</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-belum-body"></tbody></table></div>
 </div>
 </section>
 
@@ -124,7 +126,7 @@
 <section id="verifikasi" class="tab-content">
 <div class="panel">
 <div class="panel-header"><h3>Persetujuan Verifikasi Setoran</h3><button onclick="refreshData()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
-<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Petugas / WP</th><th>Wilayah & NOP</th><th style="text-align:right">Jumlah</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-verifikasi-body"></tbody></table></div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kelurahan / Desa</th><th>Lingkungan / Dusun</th><th style="text-align:center">Jumlah WP</th><th style="text-align:right">Jumlah Uang</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-verifikasi-body"></tbody></table></div>
 </div>
 </section>
 
@@ -178,6 +180,27 @@
 </div>
 </section>
 
+<!-- TAB: Log Aktivitas -->
+<section id="log-aktivitas" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3><i class="fas fa-history" style="color:var(--primary);margin-right:8px"></i>Log Aktivitas</h3><button onclick="loadLogAktivitas()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+  <div><label class="form-label">Filter Aksi</label><select id="filter-log-aksi" class="form-select" onchange="renderLogTable()"><option value="">Semua Aksi</option><option value="LOGIN">Login</option><option value="LOGOUT">Logout</option><option value="SIMPAN_TRANSAKSI">Simpan Transaksi</option><option value="SETOR">Setor</option><option value="VERIF_SETUJU">Verifikasi Setuju</option><option value="VERIF_TOLAK">Verifikasi Tolak</option><option value="TAMBAH_USER">Tambah User</option><option value="EDIT_USER">Edit User</option><option value="HAPUS_USER">Hapus User</option></select></div>
+  <div><label class="form-label">Filter Pengguna</label><input type="text" id="filter-log-user" class="form-input" placeholder="Cari username..." oninput="renderLogTable()" style="padding:0.6rem 1rem"></div>
+  <div><label class="form-label">Dari Tanggal</label><input type="date" id="filter-log-dari" class="form-input" onchange="renderLogTable()" style="padding:0.6rem 1rem"></div>
+  <div><label class="form-label">Sampai Tanggal</label><input type="date" id="filter-log-sampai" class="form-input" onchange="renderLogTable()" style="padding:0.6rem 1rem"></div>
+</div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr>
+  <th style="text-align:center;width:4%">No</th>
+  <th style="width:15%">Waktu</th>
+  <th style="width:11%">Pengguna</th>
+  <th style="width:17%">Aksi</th>
+  <th>Keterangan</th>
+  <th style="width:15%">Target / Wilayah</th>
+</tr></thead><tbody id="log-table-body"></tbody></table></div>
+</div>
+</section>
+
 </main>
 </div>
 
@@ -192,10 +215,48 @@
 <div class="modal-body">
 <table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th></tr></thead><tbody id="detail-table-body"></tbody>
 <tfoot style="background:#f1f5f9"><tr><td style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Rekap</td><td id="detail-total-rekap" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td></tr></tfoot></table>
+
+<!-- Upload Bukti Bayar -->
+<div style="margin-top:1rem;padding:1rem;border:2px dashed #e2e8f0;border-radius:0.75rem;background:#f8fafc">
+  <label style="font-size:0.7rem;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.5rem"><i class="fas fa-upload" style="color:var(--primary);margin-right:6px"></i>Upload Bukti Bayar <span style="color:#ef4444">*</span></label>
+  <input type="file" id="bukti-bayar-input" accept="image/*,.pdf" style="display:none" onchange="previewBuktiBayar(this)">
+  <div id="bukti-bayar-preview" onclick="document.getElementById('bukti-bayar-input').click()" style="cursor:pointer;border-radius:0.5rem;overflow:hidden;min-height:80px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.4rem;color:#94a3b8">
+    <i class="fas fa-image" style="font-size:1.5rem"></i>
+    <span style="font-size:0.7rem;font-weight:700">Klik untuk pilih file</span>
+  </div>
+  <div id="bukti-bayar-info" style="display:none;margin-top:0.5rem;font-size:0.7rem;color:#64748b;font-weight:700"></div>
+</div>
 </div>
 <div class="modal-footer">
 <button onclick="closeDetailModal()" class="btn btn-outline">Kembali</button>
 <button id="btn-proses-setor" class="btn btn-primary">Setor Sekarang</button>
+</div>
+</div>
+</div>
+
+<!-- MODAL: Verifikasi Rincian -->
+<div id="verifikasi-rincian-modal" class="modal-overlay">
+<div class="modal-card">
+<div class="modal-header"><h3><i class="fas fa-clipboard-check" style="color:var(--primary)"></i> Rincian Verifikasi Setoran</h3><button onclick="closeVerifikasiRincianModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<div class="info-box" style="display:flex;justify-content:space-between">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kelurahan</div><div id="verif-detail-kelurahan" style="font-weight:900">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Lingkungan</div><div id="verif-detail-lingkungan" style="font-weight:900">---</div></div>
+</div>
+<div class="modal-body">
+<table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th></tr></thead><tbody id="verif-detail-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Rekap</td><td id="verif-detail-total" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td></tr></tfoot></table>
+
+<!-- Bukti Bayar Section -->
+<div style="margin-top:1rem;padding:1rem;border-radius:0.75rem;background:#f8fafc;border:1px solid #e2e8f0">
+  <div style="font-size:0.7rem;font-weight:900;color:#475569;text-transform:uppercase;margin-bottom:0.75rem"><i class="fas fa-receipt" style="color:var(--primary);margin-right:6px"></i>Bukti Bayar</div>
+  <div id="verif-bukti-loading" style="display:none;text-align:center;color:#94a3b8;font-size:0.75rem;padding:1rem"><i class="fas fa-circle-notch animate-spin"></i> Memuat...</div>
+  <div id="verif-bukti-preview" style="text-align:center;color:#cbd5e1;font-size:0.75rem;padding:1rem"><i class="fas fa-image" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>Belum ada bukti bayar</div>
+</div>
+</div>
+<div class="modal-footer">
+<button onclick="closeVerifikasiRincianModal()" class="btn btn-outline">Kembali</button>
+<button id="btn-verif-tolak" class="btn btn-danger"><i class="fas fa-times"></i> Tolak</button>
+<button id="btn-verif-setuju" class="btn btn-success"><i class="fas fa-check"></i> Setuju</button>
 </div>
 </div>
 </div>
@@ -244,7 +305,12 @@
 <div class="modal-card" style="max-width:380px;text-align:center;padding:2.5rem">
 <div id="modal-icon" style="margin-bottom:1.25rem"></div>
 <h3 id="modal-title" style="font-size:1.3rem;font-weight:900;margin-bottom:0.5rem">Konfirmasi</h3>
-<p id="modal-desc" style="color:#64748b;font-size:0.85rem;margin-bottom:1.75rem;line-height:1.6"></p>
+<p id="modal-desc" style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;line-height:1.6"></p>
+<!-- Input tanggal pelunasan (hanya tampil saat approve) -->
+<div id="modal-date-container" style="display:none;margin-bottom:1.25rem;text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.75rem;padding:1rem">
+  <label for="modal-tanggal-lunas" style="font-size:0.65rem;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.5rem"><i class="fas fa-calendar-check" style="color:var(--primary);margin-right:5px"></i>Tanggal Pelunasan <span style="color:#ef4444">*</span></label>
+  <input type="date" id="modal-tanggal-lunas" class="form-input" style="font-size:0.9rem;font-weight:700;text-align:center">
+</div>
 <div class="modal-footer"><button onclick="closeModal()" class="btn btn-outline">Batal</button><button id="modal-confirm" class="btn btn-primary">Lanjutkan</button></div>
 </div>
 </div>
@@ -315,10 +381,28 @@
 </div>
 </div>
 
+<!-- MODAL: Idle Warning -->
+<div id="idle-warning-modal" class="modal-overlay" style="z-index:99999">
+<div class="modal-card" style="max-width:360px;text-align:center;padding:2.5rem;border-top:4px solid #f59e0b">
+  <div style="margin-bottom:1.25rem">
+    <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;margin:0 auto">
+      <i class="fas fa-clock" style="font-size:2rem;color:#d97706"></i>
+    </div>
+  </div>
+  <h3 style="font-size:1.2rem;font-weight:900;margin-bottom:0.5rem;color:#1e293b">Sesi Akan Berakhir</h3>
+  <p style="color:#64748b;font-size:0.85rem;line-height:1.6;margin-bottom:1rem">Anda tidak aktif selama 29 menit.<br>Sesi akan otomatis berakhir dalam</p>
+  <div style="font-size:3rem;font-weight:900;color:#d97706;margin-bottom:0.25rem;font-family:'JetBrains Mono',monospace" id="idle-countdown">60</div>
+  <div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:1.75rem">detik</div>
+  <div class="modal-footer">
+    <button onclick="forceLogout()" class="btn btn-outline" style="color:#ef4444;border-color:#ef4444">Logout Sekarang</button>
+    <button onclick="keepSession()" class="btn btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fas fa-check"></i> Tetap Login</button>
+  </div>
+</div>
+</div>
+
 <!-- Toast -->
 <div id="toast-container" class="toast-container"></div>
 
-<script src="wilayah-data.js"></script>
 <script src="app-core.js"></script>
 <script src="app-features.js"></script>
 </body>
