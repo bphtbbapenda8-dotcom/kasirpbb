@@ -1,474 +1,440 @@
-/* ============================================
-   e-Kasir PBB P2 — Premium Design System
-   BAPENDA Kabupaten Majene
-   ============================================ */
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-Kasir PBB P2 | BAPENDA Majene</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="e-kasir-pbb.css">
+</head>
+<body>
 
-:root {
-    --primary: #4f46e5;
-    --primary-dark: #3730a3;
-    --primary-light: #818cf8;
-    --accent: #06b6d4;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --sidebar-bg: linear-gradient(180deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
-    --glass: rgba(255,255,255,0.08);
-    --glass-border: rgba(255,255,255,0.12);
-    --shadow-xl: 0 20px 60px rgba(0,0,0,0.15);
-    --radius: 1.25rem;
-    --radius-lg: 1.75rem;
-}
+<!-- ===== LOGIN ===== -->
+<div id="login-view" class="login-bg">
+<div class="login-card">
+<img src="https://i.imgur.com/8q3aaaT.png" alt="Logo Majene">
+<h1>e-Kasir PBB P2</h1>
+<p class="subtitle">Bapenda Kab. Majene</p>
+<form id="loginForm" style="display:flex;flex-direction:column;gap:0.75rem;text-align:left">
+<input type="text" id="username" required class="login-input" placeholder="Username">
+<input type="password" id="password" required class="login-input" placeholder="Password">
+<button type="submit" id="btnLogin" class="login-btn">Masuk</button>
+</form>
+<div id="login-error" class="login-error">Username atau Password salah</div>
+</div>
+</div>
 
-* { margin:0; padding:0; box-sizing:border-box; }
+<!-- ===== APP ===== -->
+<div id="app-view" class="app-view hidden">
 
-body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: #f1f5f9;
-    color: #1e293b;
-    -webkit-tap-highlight-color: transparent;
-    min-height: 100vh;
-}
+<!-- Sidebar Desktop -->
+<aside class="sidebar">
+<div class="sidebar-logo"><img src="https://i.imgur.com/8q3aaaT.png" alt="Logo"><span>e-KASIR</span></div>
+<nav>
+<button onclick="switchTab('beranda')" class="nav-btn active" data-tab="beranda"><i class="fas fa-th-large"></i><span>Beranda</span></button>
+<button onclick="switchTab('bayar')" class="nav-btn" data-tab="bayar"><i class="fas fa-search"></i><span>Cari NOP</span></button>
+<button onclick="switchTab('setor-list')" class="nav-btn" data-tab="setor-list"><i class="fas fa-clock"></i><span>Belum Setor</span></button>
+<button id="nav-verifikasi" onclick="switchTab('verifikasi')" class="nav-btn hidden" data-tab="verifikasi"><i class="fas fa-clipboard-check"></i><span>Verifikasi</span></button>
+<button onclick="switchTab('sudah-setor')" class="nav-btn" data-tab="sudah-setor"><i class="fas fa-check-double"></i><span>Riwayat Setoran</span></button>
+<button onclick="switchTab('rekap-pembayaran');loadRekapPembayaran()" class="nav-btn" data-tab="rekap-pembayaran"><i class="fas fa-chart-bar"></i><span>Rekap Pembayaran</span></button>
+<button onclick="switchTab('laporan-nop-baru');loadLaporanNopBaru()" class="nav-btn" data-tab="laporan-nop-baru"><i class="fas fa-file-invoice-dollar"></i><span>Laporan NOP Baru</span></button>
+<button id="nav-users" onclick="switchTab('manajemen-user');loadUsers()" class="nav-btn hidden" data-tab="manajemen-user"><i class="fas fa-users-cog"></i><span>Manajemen User</span></button>
+<button id="nav-log-aktivitas" onclick="switchTab('log-aktivitas');loadLogAktivitas()" class="nav-btn hidden" data-tab="log-aktivitas"><i class="fas fa-history"></i><span>Log Aktivitas</span></button>
+</nav>
+<button onclick="confirmLogout()" class="nav-btn-logout"><i class="fas fa-power-off"></i><span>Keluar</span></button>
+</aside>
 
-/* ---- Scrollbar ---- */
-::-webkit-scrollbar { width:6px; height:6px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:9px; }
-::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
+<!-- Mobile Nav -->
+<nav class="mobile-nav">
+<button onclick="switchTab('beranda')" class="mob-btn active" data-tab="beranda"><i class="fas fa-th-large"></i><span>Beranda</span></button>
+<button onclick="switchTab('bayar')" class="mob-btn" data-tab="bayar"><i class="fas fa-search"></i><span>Cari</span></button>
+<button onclick="switchTab('setor-list')" class="mob-btn" data-tab="setor-list"><i class="fas fa-clock"></i><span>Setor</span></button>
+<button id="mob-verifikasi" onclick="switchTab('verifikasi')" class="mob-btn hidden" data-tab="verifikasi"><i class="fas fa-clipboard-check"></i><span>Verif</span></button>
+<button onclick="switchTab('sudah-setor')" class="mob-btn" data-tab="sudah-setor"><i class="fas fa-history"></i><span>Riwayat</span></button>
+<button onclick="switchTab('rekap-pembayaran');loadRekapPembayaran()" class="mob-btn" data-tab="rekap-pembayaran"><i class="fas fa-chart-bar"></i><span>Rekap</span></button>
+<button onclick="switchTab('laporan-nop-baru');loadLaporanNopBaru()" class="mob-btn" data-tab="laporan-nop-baru"><i class="fas fa-file-invoice-dollar"></i><span>NOP Baru</span></button>
+<button id="mob-users" onclick="switchTab('manajemen-user');loadUsers()" class="mob-btn hidden" data-tab="manajemen-user"><i class="fas fa-users-cog"></i><span>Users</span></button>
+<button id="mob-log-aktivitas" onclick="switchTab('log-aktivitas');loadLogAktivitas()" class="mob-btn hidden" data-tab="log-aktivitas"><i class="fas fa-history"></i><span>Log</span></button>
+</nav>
 
-/* ---- Animations ---- */
-@keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-@keyframes fadeInScale { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
-@keyframes slideInLeft { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
-@keyframes pulse-glow { 0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,0.3)} 50%{box-shadow:0 0 20px 4px rgba(79,70,229,0.15)} }
-@keyframes spin { to{transform:rotate(360deg)} }
-@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+<main class="main-content">
+<!-- Header -->
+<header class="app-header">
+<img src="https://i.imgur.com/8q3aaaT.png" alt="Logo">
+<div class="header-info">
+<p class="org-label">Kabupaten Majene</p>
+<h1>Badan Pendapatan Daerah</h1>
+<div class="kop-line"></div>
+<div class="header-meta">
+<p id="user-display"><i class="fas fa-user-circle"></i> Petugas: ---</p>
+<p id="date-display"><i class="fas fa-calendar-alt"></i> ---</p>
+</div>
+</div>
+</header>
 
-.animate-fadeIn { animation: fadeIn 0.4s ease-out; }
-.animate-fadeInScale { animation: fadeInScale 0.35s ease-out; }
-.animate-spin { animation: spin 1s linear infinite; }
+<!-- TAB: Beranda -->
+<section id="beranda" class="tab-content active">
+<div class="stat-grid">
+<div class="stat-card stat-primary"><i class="fas fa-wallet stat-icon"></i><p class="stat-label">Total Penerimaan</p><h3 id="stat-total" class="stat-value">Rp 0</h3></div>
+<div class="stat-card stat-orange" onclick="switchTab('setor-list')"><i class="fas fa-hourglass-half stat-icon"></i><p class="stat-label">Belum Setor</p><h3 id="stat-belum" class="stat-value">Rp 0</h3></div>
+<div class="stat-card stat-amber"><i class="fas fa-shield-halved stat-icon"></i><p class="stat-label">Sedang Diverifikasi</p><h3 id="stat-verifikasi" class="stat-value">Rp 0</h3></div>
+<div class="stat-card stat-green" onclick="switchTab('sudah-setor')"><i class="fas fa-check-double stat-icon"></i><p class="stat-label">Sudah Setor</p><h3 id="stat-sudah" class="stat-value">Rp 0</h3></div>
+</div>
+</section>
 
-/* ---- LOGIN VIEW ---- */
-.login-bg {
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:1.5rem;
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%);
-    position:relative;
-    overflow:hidden;
-}
-.login-bg::before {
-    content:'';
-    position:absolute;
-    width:500px; height:500px;
-    background:radial-gradient(circle, rgba(129,140,248,0.2) 0%, transparent 70%);
-    top:-100px; right:-100px;
-    border-radius:50%;
-}
-.login-bg::after {
-    content:'';
-    position:absolute;
-    width:400px; height:400px;
-    background:radial-gradient(circle, rgba(6,182,212,0.15) 0%, transparent 70%);
-    bottom:-80px; left:-80px;
-    border-radius:50%;
-}
-.login-card {
-    background:rgba(255,255,255,0.97);
-    backdrop-filter:blur(20px);
-    border-radius:2.5rem;
-    padding:3rem 2.5rem;
-    width:100%; max-width:420px;
-    box-shadow: 0 25px 80px rgba(0,0,0,0.25);
-    text-align:center;
-    position:relative;
-    z-index:2;
-}
-.login-card img { height:80px; margin-bottom:1.5rem; }
-.login-card h1 { font-size:1.5rem; font-weight:900; color:#1e293b; text-transform:uppercase; letter-spacing:-0.02em; }
-.login-card .subtitle { font-size:0.65rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:2rem; }
-.login-input {
-    width:100%;
-    padding:1rem 1.5rem;
-    border-radius:var(--radius);
-    border:2px solid #e2e8f0;
-    background:#f8fafc;
-    font-size:0.9rem; font-weight:600;
-    outline:none;
-    transition:all 0.3s;
-    font-family:'Inter',sans-serif;
-}
-.login-input:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(79,70,229,0.1); background:#fff; }
-.login-btn {
-    width:100%;
-    padding:1.1rem;
-    border:none;
-    border-radius:var(--radius);
-    background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    color:#fff;
-    font-size:0.8rem; font-weight:900;
-    text-transform:uppercase;
-    letter-spacing:0.15em;
-    cursor:pointer;
-    transition:all 0.3s;
-    box-shadow:0 8px 25px rgba(79,70,229,0.35);
-}
-.login-btn:hover { transform:translateY(-2px); box-shadow:0 12px 35px rgba(79,70,229,0.45); }
-.login-btn:active { transform:scale(0.98); }
-.login-btn:disabled { opacity:0.7; cursor:not-allowed; transform:none; }
-.login-error {
-    display:none;
-    margin-top:1rem;
-    padding:0.75rem 1rem;
-    background:#fef2f2;
-    color:#dc2626;
-    font-size:0.75rem; font-weight:700;
-    border-radius:var(--radius);
-    border:1px solid #fecaca;
-}
-.login-error.show { display:block; animation:fadeIn 0.3s; }
+<!-- TAB: Cari NOP -->
+<section id="bayar" class="tab-content">
+<div class="panel" style="max-width:900px;margin:0 auto">
+<div style="padding:1.75rem 2rem"><h3 style="font-size:1.1rem;font-weight:900">Input Pembayaran</h3><p style="font-size:0.75rem;color:#94a3b8;font-weight:500;margin-top:0.25rem">Masukkan NOP untuk menarik data tagihan SPPT 2026</p></div>
+<form id="searchForm" style="padding:0 2rem 2rem;display:flex;flex-direction:column;gap:1rem">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+<div><label class="form-label">Kecamatan</label><select id="p-kecamatan" required class="form-select"></select></div>
+<div><label class="form-label">Kelurahan</label><select id="p-kelurahan" required disabled class="form-select"></select></div>
+</div>
+<div><label class="form-label">Lingkungan / Dusun</label><select id="p-lingkungan" required disabled class="form-select"></select></div>
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem">
+<div><label class="form-label">Blok (3 Digit)</label><input type="text" id="p-blok" required maxlength="3" class="form-input mono" placeholder="000"></div>
+<div><label class="form-label">Nomor Urut (Pisah Koma)</label><input type="text" id="p-nourut" required class="form-input mono" placeholder="0001, 0002" oninput="handleNourutInput()"></div>
+</div>
+<!-- Manual Input Toggle -->
+<div style="margin-top:0.5rem;padding:0.75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.5rem;display:flex;align-items:center;gap:0.75rem">
+  <input type="checkbox" id="is-manual-input" style="width:1.2rem;height:1.2rem;accent-color:var(--primary)" onchange="toggleManualInput()">
+  <label for="is-manual-input" style="font-size:0.75rem;font-weight:700;color:#334155;cursor:pointer">Input Manual (NOP Tidak Terdaftar / NOP Baru)</label>
+</div>
+<!-- Nominal Inputs Container -->
+<div id="manual-nominals-container" style="display:none;flex-direction:column;gap:0.75rem;margin-top:0.5rem;padding:1rem;background:#fffbeb;border:1px dashed #fcd34d;border-radius:0.5rem"></div>
 
-/* ---- SIDEBAR (Desktop) ---- */
-.sidebar {
-    position:fixed; left:0; top:0;
-    width:260px; height:100vh;
-    background:var(--sidebar-bg);
-    display:none; flex-direction:column;
-    padding:1.75rem 1rem;
-    z-index:40;
-    border-right:1px solid rgba(255,255,255,0.06);
-}
-@media(min-width:768px) { .sidebar { display:flex; } }
-.sidebar-logo {
-    display:flex; align-items:center; gap:0.75rem;
-    padding:0 0.75rem; margin-bottom:2.5rem;
-}
-.sidebar-logo img { height:38px; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
-.sidebar-logo span { font-weight:900; font-size:1.2rem; color:#fff; letter-spacing:-0.02em; text-transform:uppercase; }
-.sidebar nav { flex-grow:1; display:flex; flex-direction:column; gap:0.25rem; }
-.nav-btn {
-    display:flex; align-items:center; gap:0.85rem;
-    padding:0.85rem 1rem;
-    border-radius:0.85rem;
-    border:none;
-    background:transparent;
-    color:rgba(255,255,255,0.5);
-    font-size:0.8rem; font-weight:700;
-    cursor:pointer;
-    transition:all 0.25s;
-    text-align:left;
-    width:100%;
-    font-family:'Inter',sans-serif;
-}
-.nav-btn i { width:20px; text-align:center; font-size:0.9rem; }
-.nav-btn:hover { background:var(--glass); color:rgba(255,255,255,0.85); }
-.nav-btn.active {
-    background:rgba(79,70,229,0.35);
-    color:#fff;
-    box-shadow:0 4px 15px rgba(79,70,229,0.2);
-    border-left:3px solid var(--primary-light);
-}
-.nav-btn-logout {
-    margin-top:auto;
-    display:flex; align-items:center; gap:0.85rem;
-    padding:0.85rem 1rem;
-    border-radius:0.85rem;
-    border:none;
-    background:rgba(239,68,68,0.1);
-    color:#fca5a5;
-    font-size:0.8rem; font-weight:700;
-    cursor:pointer;
-    transition:all 0.25s;
-    width:100%;
-    font-family:'Inter',sans-serif;
-}
-.nav-btn-logout:hover { background:rgba(239,68,68,0.25); color:#fff; }
+<button type="submit" id="btnCari" class="btn btn-dark" style="width:100%;padding:1.1rem;margin-top:1rem"><i class="fas fa-search"></i> Cari Data Tagihan</button>
+</form>
+<div id="search-result" class="hidden" style="padding:0 2rem 2rem">
+<div style="border-radius:var(--radius);overflow:hidden;border:1px solid #e2e8f0">
+<table class="data-table"><thead><tr><th>Informasi WP</th><th style="text-align:right">Tagihan</th><th style="text-align:center">Aksi</th></tr></thead>
+<tbody id="res-table-body"></tbody>
+<tfoot style="background:var(--primary);color:#fff"><tr><td style="font-weight:900;font-size:0.7rem;text-transform:uppercase">Total Akumulasi</td><td id="res-total-bayar" style="text-align:right;font-weight:900;font-size:1.15rem" colspan="2">Rp 0</td></tr></tfoot>
+</table></div>
+<button onclick="processCart()" id="btnSimpan" class="btn btn-success" style="width:100%;margin-top:1rem;padding:1.2rem"><i class="fas fa-check-circle"></i> Simpan Transaksi</button>
+</div>
+</div>
+</section>
 
-/* ---- MOBILE BOTTOM NAV ---- */
-.mobile-nav {
-    position:fixed; bottom:0; left:0; right:0;
-    background:rgba(255,255,255,0.95);
-    backdrop-filter:blur(20px);
-    border-top:1px solid #e2e8f0;
-    display:flex; justify-content:space-around; align-items:center;
-    z-index:50;
-    padding:0.5rem 0 0.6rem;
-    box-shadow:0 -4px 20px rgba(0,0,0,0.06);
-}
-@media(min-width:768px) { .mobile-nav { display:none; } }
-.mob-btn {
-    display:flex; flex-direction:column; align-items:center;
-    gap:0.15rem;
-    background:none; border:none;
-    color:#94a3b8;
-    font-size:0.55rem; font-weight:800;
-    text-transform:uppercase;
-    letter-spacing:0.05em;
-    cursor:pointer;
-    transition:all 0.25s;
-    padding:0.35rem 0.5rem;
-    border-radius:0.5rem;
-    font-family:'Inter',sans-serif;
-}
-.mob-btn i { font-size:1.15rem; margin-bottom:0.1rem; }
-.mob-btn.active { color:var(--primary); }
+<!-- TAB: Belum Setor -->
+<section id="setor-list" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3><i class="fas fa-layer-group" style="color:var(--primary);margin-right:8px"></i>Rekap Lingkungan (Belum Setor)</h3><button onclick="refreshData()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+<div><label class="form-label">Filter Kecamatan</label><select id="filter-kecamatan" class="form-select"></select></div>
+<div><label class="form-label">Filter Kelurahan</label><select id="filter-kelurahan" class="form-select" disabled></select></div>
+<div><label class="form-label">Filter Lingkungan</label><select id="filter-lingkungan" class="form-select" disabled></select></div>
+</div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kelurahan / Desa</th><th>Lingkungan / Dusun</th><th style="text-align:center">Jumlah WP</th><th style="text-align:right">Jumlah Uang</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-belum-body"></tbody></table></div>
+</div>
+</section>
 
-/* ---- MAIN CONTENT ---- */
-.app-view { min-height:100vh; padding-bottom:5rem; }
-@media(min-width:768px) { .app-view { padding-left:260px; padding-bottom:0; } }
-.main-content { padding:1.25rem; max-width:1280px; margin:0 auto; }
-@media(min-width:768px) { .main-content { padding:2rem 2.5rem; } }
+<!-- TAB: Verifikasi -->
+<section id="verifikasi" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3>Persetujuan Verifikasi Setoran</h3><button onclick="refreshData()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kelurahan / Desa</th><th>Lingkungan / Dusun</th><th style="text-align:center">Jumlah WP</th><th style="text-align:right">Jumlah Uang</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-verifikasi-body"></tbody></table></div>
+</div>
+</section>
 
-/* ---- HEADER ---- */
-.app-header {
-    background:#fff;
-    border-radius:var(--radius-lg);
-    border:1px solid #e2e8f0;
-    padding:1.25rem 1.5rem;
-    margin-bottom:1.75rem;
-    display:flex; align-items:center; gap:1.25rem;
-    box-shadow:0 1px 3px rgba(0,0,0,0.04);
-    animation:fadeIn 0.4s;
-    flex-wrap:wrap;
-}
-.app-header img { height:52px; }
-@media(min-width:768px) { .app-header img { height:64px; } .app-header { padding:1.5rem 2rem; } }
-.header-info { flex-grow:1; }
-.header-info .org-label { font-size:0.6rem; font-weight:900; color:var(--primary); text-transform:uppercase; letter-spacing:0.15em; }
-.header-info h1 { font-size:1.1rem; font-weight:900; color:#1e293b; }
-@media(min-width:768px) { .header-info h1 { font-size:1.4rem; } }
-.kop-line { height:3px; background:linear-gradient(90deg, var(--primary-dark), var(--primary-light), var(--primary-dark)); border-radius:3px; margin:0.4rem 0; max-width:280px; }
-.header-meta { display:flex; gap:1rem; flex-wrap:wrap; font-size:0.6rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; }
-.header-meta i { color:var(--primary-light); margin-right:0.25rem; }
+<!-- TAB: Riwayat -->
+<section id="sudah-setor" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3>Riwayat Setoran Lunas</h3><button onclick="refreshData()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+<div><label class="form-label">Filter Kecamatan</label><select id="filter-history-kecamatan" class="form-select"></select></div>
+<div><label class="form-label">Filter Kelurahan</label><select id="filter-history-kelurahan" class="form-select" disabled></select></div>
+<div><label class="form-label">Filter Lingkungan</label><select id="filter-history-lingkungan" class="form-select" disabled></select></div>
+</div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kelurahan</th><th>Lingkungan</th><th style="text-align:center">Waktu Setor</th><th style="text-align:right">Jumlah</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="list-sudah-body"></tbody></table></div>
+</div>
+</section>
 
-/* ---- TAB CONTENT ---- */
-.tab-content { display:none; }
-.tab-content.active { display:block; animation:fadeIn 0.35s ease-out; }
+<!-- TAB: Rekap Pembayaran -->
+<section id="rekap-pembayaran" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3><i class="fas fa-chart-bar" style="color:var(--primary);margin-right:8px"></i>Rekap Pembayaran</h3><button onclick="loadRekapPembayaran()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+<div><label class="form-label">Filter Kecamatan</label><select id="filter-rekap-kecamatan" class="form-select"></select></div>
+</div>
+<div style="overflow-x:auto">
+<table class="data-table" id="rekap-table">
+<thead><tr>
+<th style="text-align:center;width:5%">No</th>
+<th>Kecamatan</th>
+<th>Kelurahan</th>
+<th style="text-align:right">Realisasi</th>
+<th style="text-align:center">Aksi</th>
+</tr></thead>
+<tbody id="rekap-table-body"></tbody>
+<tfoot style="background:var(--primary);color:#fff">
+<tr>
+<td colspan="3" style="padding:1rem 1.75rem;font-weight:900;font-size:0.75rem;text-transform:uppercase">Total Realisasi</td>
+<td id="rekap-grand-total" style="padding:1rem 1.75rem;text-align:right;font-weight:900;font-size:1.1rem">Rp 0</td>
+<td></td>
+</tr>
+</tfoot>
+</table>
+</div>
+</div>
+</section>
 
-/* ---- STAT CARDS ---- */
-.stat-grid { display:grid; grid-template-columns:1fr; gap:1rem; margin-bottom:1.5rem; }
-@media(min-width:640px) { .stat-grid { grid-template-columns:repeat(2,1fr); } }
-@media(min-width:1024px) { .stat-grid { grid-template-columns:repeat(4,1fr); } }
-.stat-card {
-    padding:1.5rem;
-    border-radius:var(--radius-lg);
-    position:relative;
-    overflow:hidden;
-    transition:all 0.3s;
-}
-.stat-card:hover { transform:translateY(-3px); }
-.stat-card .stat-icon {
-    position:absolute; right:-8px; bottom:-8px;
-    font-size:4.5rem; opacity:0.08;
-}
-.stat-card .stat-label { font-size:0.6rem; font-weight:900; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:0.5rem; opacity:0.7; }
-.stat-card .stat-value { font-size:1.5rem; font-weight:900; }
-.stat-primary { background:linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color:#fff; box-shadow:0 8px 30px rgba(79,70,229,0.3); }
-.stat-orange { background:#fff; border:1px solid #fed7aa; color:#ea580c; cursor:pointer; }
-.stat-orange:hover { border-color:#f97316; }
-.stat-amber { background:#fff; border:1px solid #fde68a; color:#d97706; }
-.stat-green { background:#fff; border:1px solid #a7f3d0; color:#059669; cursor:pointer; }
-.stat-green:hover { border-color:#10b981; }
+<!-- TAB: Manajemen User -->
+<section id="manajemen-user" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3>Manajemen User</h3><button onclick="addNewUser()" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah User</button></div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Username</th><th>Role</th><th>Wilayah</th><th>Password</th><th style="text-align:center">Aksi</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
+</div>
+</section>
 
-/* ---- CARD / PANEL ---- */
-.panel {
-    background:#fff;
-    border-radius:var(--radius-lg);
-    border:1px solid #e2e8f0;
-    box-shadow:0 1px 3px rgba(0,0,0,0.04);
-    overflow:hidden;
-}
-.panel-header {
-    padding:1.25rem 1.75rem;
-    border-bottom:1px solid #f1f5f9;
-    display:flex; justify-content:space-between; align-items:center;
-    background:#fafbfc;
-}
-.panel-header h3 { font-size:0.7rem; font-weight:900; color:#1e293b; text-transform:uppercase; letter-spacing:0.1em; }
-.panel-header .refresh-btn {
-    background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.9rem;
-    transition:transform 0.3s;
-}
-.panel-header .refresh-btn:hover { transform:rotate(180deg); }
+<!-- TAB: Laporan NOP Baru -->
+<section id="laporan-nop-baru" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3><i class="fas fa-file-invoice-dollar" style="color:var(--primary);margin-right:8px"></i>Laporan NOP Baru</h3><button onclick="loadLaporanNopBaru()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+  <div><label class="form-label">Filter Kecamatan</label><select id="filter-nopbaru-kecamatan" class="form-select"></select></div>
+  <div><label class="form-label">Filter Status</label><select id="filter-nopbaru-status" class="form-select" onchange="renderLaporanNopBaruTable()"><option value="">Semua Status</option><option value="Belum Setor">Belum Setor</option><option value="Sedang Diverifikasi">Sedang Diverifikasi</option><option value="Sudah Setor">Sudah Setor</option></select></div>
+</div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr>
+  <th style="text-align:center;width:5%">No</th>
+  <th style="width:15%">Kecamatan</th>
+  <th style="width:15%">Kelurahan / Lingk.</th>
+  <th style="width:25%">NOP & Wajib Pajak</th>
+  <th style="text-align:right">Nominal (Rp)</th>
+  <th style="width:15%;text-align:center">Status</th>
+</tr></thead><tbody id="nopbaru-table-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td colspan="4" style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem;text-align:right">Total Nominal NOP Baru</td><td id="nopbaru-grand-total" style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td><td></td></tr></tfoot>
+</table></div>
+</div>
+</section>
 
-/* ---- FORM ---- */
-.form-label { font-size:0.6rem; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem; display:block; padding-left:0.25rem; }
-.form-input, .form-select {
-    width:100%;
-    padding:0.9rem 1.25rem;
-    border-radius:var(--radius);
-    border:2px solid #e2e8f0;
-    background:#f8fafc;
-    font-size:0.85rem; font-weight:600;
-    outline:none;
-    transition:all 0.3s;
-    font-family:'Inter',sans-serif;
-}
-.form-input:focus, .form-select:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(79,70,229,0.08); background:#fff; }
-.form-input:disabled, .form-select:disabled { opacity:0.5; cursor:not-allowed; }
-.form-input.mono { font-family:'JetBrains Mono','Courier New',monospace; text-align:center; font-size:1.1rem; }
+<!-- TAB: Log Aktivitas -->
+<section id="log-aktivitas" class="tab-content">
+<div class="panel">
+<div class="panel-header"><h3><i class="fas fa-history" style="color:var(--primary);margin-right:8px"></i>Log Aktivitas</h3><button onclick="loadLogAktivitas()" class="refresh-btn"><i class="fas fa-sync-alt"></i></button></div>
+<div class="filter-bar">
+  <div><label class="form-label">Filter Aksi</label><select id="filter-log-aksi" class="form-select" onchange="renderLogTable()"><option value="">Semua Aksi</option><option value="LOGIN">Login</option><option value="LOGOUT">Logout</option><option value="SIMPAN_TRANSAKSI">Simpan Transaksi</option><option value="SETOR">Setor</option><option value="VERIF_SETUJU">Verifikasi Setuju</option><option value="VERIF_TOLAK">Verifikasi Tolak</option><option value="TAMBAH_USER">Tambah User</option><option value="EDIT_USER">Edit User</option><option value="HAPUS_USER">Hapus User</option></select></div>
+  <div><label class="form-label">Filter Pengguna</label><input type="text" id="filter-log-user" class="form-input" placeholder="Cari username..." oninput="renderLogTable()" style="padding:0.6rem 1rem"></div>
+  <div><label class="form-label">Dari Tanggal</label><input type="date" id="filter-log-dari" class="form-input" onchange="renderLogTable()" style="padding:0.6rem 1rem"></div>
+  <div><label class="form-label">Sampai Tanggal</label><input type="date" id="filter-log-sampai" class="form-input" onchange="renderLogTable()" style="padding:0.6rem 1rem"></div>
+</div>
+<div style="overflow-x:auto"><table class="data-table"><thead><tr>
+  <th style="text-align:center;width:4%">No</th>
+  <th style="width:15%">Waktu</th>
+  <th style="width:11%">Pengguna</th>
+  <th style="width:17%">Aksi</th>
+  <th>Keterangan</th>
+  <th style="width:15%">Target / Wilayah</th>
+</tr></thead><tbody id="log-table-body"></tbody></table></div>
+</div>
+</section>
 
-/* ---- BUTTONS ---- */
-.btn {
-    display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
-    padding:0.85rem 1.5rem;
-    border:none; border-radius:var(--radius);
-    font-size:0.75rem; font-weight:900;
-    text-transform:uppercase; letter-spacing:0.1em;
-    cursor:pointer;
-    transition:all 0.3s;
-    font-family:'Inter',sans-serif;
-}
-.btn:active { transform:scale(0.97); }
-.btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
-.btn-dark { background:#0f172a; color:#fff; box-shadow:0 6px 20px rgba(15,23,42,0.25); }
-.btn-dark:hover { background:var(--primary); }
-.btn-primary { background:var(--primary); color:#fff; box-shadow:0 6px 20px rgba(79,70,229,0.3); }
-.btn-primary:hover { background:var(--primary-dark); }
-.btn-success { background:var(--success); color:#fff; box-shadow:0 6px 20px rgba(16,185,129,0.3); }
-.btn-success:hover { background:#059669; }
-.btn-outline { background:transparent; border:2px solid #e2e8f0; color:#64748b; }
-.btn-outline:hover { background:#f8fafc; border-color:#cbd5e1; }
-.btn-danger { background:var(--danger); color:#fff; }
-.btn-sm { padding:0.5rem 0.85rem; font-size:0.6rem; border-radius:0.75rem; }
+</main>
+</div>
 
-/* ---- TABLE ---- */
-.data-table { width:100%; text-align:left; border-collapse:collapse; }
-.data-table thead { background:#f8fafc; }
-.data-table th { padding:1rem 1.75rem; font-size:0.6rem; font-weight:900; color:#94a3b8; text-transform:uppercase; letter-spacing:0.1em; }
-.data-table td { padding:1rem 1.75rem; font-size:0.8rem; font-weight:600; }
-.data-table tbody tr { border-bottom:1px solid #f1f5f9; transition:background 0.2s; }
-.data-table tbody tr:hover { background:#fafbfc; }
-.data-table tfoot td { padding:1.15rem 1.75rem; font-weight:900; }
+<!-- MODAL: Detail Setor -->
+<div id="detail-modal" class="modal-overlay">
+<div class="modal-card">
+<div class="modal-header"><h3><i class="fas fa-file-invoice" style="color:var(--primary)"></i> Rincian & Setor</h3><button onclick="closeDetailModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<div class="info-box" style="display:flex;justify-content:space-between">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kelurahan</div><div id="detail-kelurahan" style="font-weight:900">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Lingkungan</div><div id="detail-lingkungan" style="font-weight:900">---</div></div>
+</div>
+<div class="modal-body">
+<table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th></tr></thead><tbody id="detail-table-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Rekap</td><td id="detail-total-rekap" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td></tr></tfoot></table>
 
-/* ---- FILTER BAR ---- */
-.filter-bar {
-    padding:1rem 1.75rem;
-    background:#fafbfc;
-    border-bottom:1px solid #f1f5f9;
-    display:grid; grid-template-columns:1fr; gap:0.75rem;
-}
-@media(min-width:768px) { .filter-bar { grid-template-columns:repeat(3,1fr); } }
-.filter-bar .form-select { padding:0.65rem 1rem; font-size:0.75rem; }
+<!-- Upload Bukti Bayar -->
+<div style="margin-top:1rem;padding:1rem;border:2px dashed #e2e8f0;border-radius:0.75rem;background:#f8fafc">
+  <label style="font-size:0.7rem;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.5rem"><i class="fas fa-upload" style="color:var(--primary);margin-right:6px"></i>Upload Bukti Bayar <span style="color:#ef4444">*</span></label>
+  <input type="file" id="bukti-bayar-input" accept="image/*,.pdf" style="display:none" onchange="previewBuktiBayar(this)">
+  <div id="bukti-bayar-preview" onclick="document.getElementById('bukti-bayar-input').click()" style="cursor:pointer;border-radius:0.5rem;overflow:hidden;min-height:80px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.4rem;color:#94a3b8">
+    <i class="fas fa-image" style="font-size:1.5rem"></i>
+    <span style="font-size:0.7rem;font-weight:700">Klik untuk pilih file</span>
+  </div>
+  <div id="bukti-bayar-info" style="display:none;margin-top:0.5rem;font-size:0.7rem;color:#64748b;font-weight:700"></div>
+</div>
+</div>
+<div class="modal-footer">
+<button onclick="closeDetailModal()" class="btn btn-outline">Kembali</button>
+<button id="btn-proses-setor" class="btn btn-primary">Setor Sekarang</button>
+</div>
+</div>
+</div>
 
-/* ---- MODALS ---- */
-.modal-overlay {
-    position:fixed; inset:0;
-    background:rgba(15,23,42,0.7);
-    backdrop-filter:blur(8px);
-    z-index:100;
-    display:none; align-items:center; justify-content:center;
-    padding:1.25rem;
-}
-.modal-overlay.open { display:flex; }
-.modal-card {
-    background:#fff;
-    border-radius:2rem;
-    width:100%; max-width:480px;
-    padding:2rem;
-    box-shadow:var(--shadow-xl);
-    animation:fadeInScale 0.3s ease-out;
-    max-height:85vh;
-    display:flex; flex-direction:column;
-    overflow:hidden;
-}
-.modal-card-lg { max-width:720px; }
-.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
-.modal-header h3 { font-size:1.1rem; font-weight:900; display:flex; align-items:center; gap:0.5rem; }
-.modal-close { background:none; border:none; color:#94a3b8; cursor:pointer; font-size:1.2rem; transition:color 0.2s; }
-.modal-close:hover { color:#475569; }
-.modal-body { overflow-y:auto; flex-grow:1; padding-right:0.25rem; }
-.modal-footer { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:1.25rem; }
+<!-- MODAL: Verifikasi Rincian -->
+<div id="verifikasi-rincian-modal" class="modal-overlay">
+<div class="modal-card">
+<div class="modal-header"><h3><i class="fas fa-clipboard-check" style="color:var(--primary)"></i> Rincian Verifikasi Setoran</h3><button onclick="closeVerifikasiRincianModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<div class="info-box" style="display:flex;justify-content:space-between">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kelurahan</div><div id="verif-detail-kelurahan" style="font-weight:900">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Lingkungan</div><div id="verif-detail-lingkungan" style="font-weight:900">---</div></div>
+</div>
+<div class="modal-body">
+<table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th></tr></thead><tbody id="verif-detail-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Rekap</td><td id="verif-detail-total" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td></tr></tfoot></table>
 
-/* ---- FULLSCREEN REPORT ---- */
-.fullscreen-overlay {
-    position:fixed; inset:0;
-    background:rgba(15,23,42,0.85);
-    z-index:120;
-    display:none; justify-content:center; align-items:flex-start;
-    overflow-y:auto;
-    padding:1.5rem;
-}
-.fullscreen-overlay.open { display:flex; }
-.report-container {
-    max-width:800px; width:100%;
-    background:#fff;
-    border-radius:var(--radius-lg);
-    box-shadow:var(--shadow-xl);
-    overflow:hidden;
-    margin:1rem 0;
-    animation:fadeInScale 0.3s;
-}
-.report-toolbar {
-    background:#f1f5f9;
-    padding:1rem 1.5rem;
-    border-bottom:1px solid #e2e8f0;
-    display:flex; justify-content:space-between; align-items:center;
-}
-.report-toolbar span { font-size:0.7rem; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; }
-.report-content { padding:2.5rem; color:#000; }
+<!-- Bukti Bayar Section -->
+<div style="margin-top:1rem;padding:1rem;border-radius:0.75rem;background:#f8fafc;border:1px solid #e2e8f0">
+  <div style="font-size:0.7rem;font-weight:900;color:#475569;text-transform:uppercase;margin-bottom:0.75rem"><i class="fas fa-receipt" style="color:var(--primary);margin-right:6px"></i>Bukti Bayar</div>
+  <div id="verif-bukti-loading" style="display:none;text-align:center;color:#94a3b8;font-size:0.75rem;padding:1rem"><i class="fas fa-circle-notch animate-spin"></i> Memuat...</div>
+  <div id="verif-bukti-preview" style="text-align:center;color:#cbd5e1;font-size:0.75rem;padding:1rem"><i class="fas fa-image" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>Belum ada bukti bayar</div>
+</div>
+</div>
+<div class="modal-footer">
+<button onclick="closeVerifikasiRincianModal()" class="btn btn-outline">Kembali</button>
+<button id="btn-verif-tolak" class="btn btn-danger"><i class="fas fa-times"></i> Tolak</button>
+<button id="btn-verif-setuju" class="btn btn-success"><i class="fas fa-check"></i> Setuju</button>
+</div>
+</div>
+</div>
 
-/* ---- TOAST ---- */
-.toast-container { position:fixed; top:1.5rem; right:1.5rem; z-index:200; display:flex; flex-direction:column; gap:0.5rem; pointer-events:none; }
-.toast {
-    padding:0.85rem 1.25rem;
-    border-radius:var(--radius);
-    color:#fff;
-    font-size:0.7rem; font-weight:800;
-    text-transform:uppercase;
-    letter-spacing:0.05em;
-    box-shadow:0 8px 30px rgba(0,0,0,0.2);
-    animation:fadeIn 0.3s;
-}
-.toast-success { background:#0f172a; }
-.toast-error { background:var(--danger); }
+<!-- MODAL: Riwayat Detail -->
+<div id="history-detail-modal" class="modal-overlay">
+<div class="modal-card">
+<div class="modal-header"><h3 style="color:var(--success)"><i class="fas fa-check-double"></i> Rincian Setoran</h3><button onclick="closeHistoryDetailModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<div class="info-box">
+<div style="display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:0.5rem;margin-bottom:0.5rem">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kelurahan</div><div id="hist-kelurahan" style="font-weight:900;font-size:0.8rem">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Lingkungan</div><div id="hist-lingkungan" style="font-weight:900;font-size:0.8rem">---</div></div>
+</div>
+<div style="display:flex;justify-content:space-between">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Waktu Setor</div><div id="hist-timestamp" style="font-weight:900;font-size:0.8rem">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Diverifikasi</div><div style="font-weight:900;font-size:0.8rem;color:var(--success)">Admin</div></div>
+</div>
+</div>
+<div class="modal-body">
+<table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th></tr></thead><tbody id="hist-table-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total</td><td id="hist-total-rekap" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--success)">Rp 0</td></tr></tfoot></table>
+</div>
+<div class="modal-footer">
+<button onclick="closeHistoryDetailModal()" class="btn btn-outline">Tutup</button>
+<button onclick="openFullscreenReport()" class="btn btn-primary"><i class="fas fa-eye"></i> Lihat Laporan</button>
+</div>
+</div>
+</div>
 
-/* ---- BADGE ---- */
-.badge {
-    display:inline-block;
-    padding:0.2rem 0.6rem;
-    border-radius:0.5rem;
-    font-size:0.55rem; font-weight:800;
-    text-transform:uppercase;
-}
-.badge-admin { background:#ede9fe; color:#6d28d9; }
-.badge-petugas { background:#e0f2fe; color:#0369a1; }
+<!-- MODAL: User Form -->
+<div id="user-modal" class="modal-overlay">
+<div class="modal-card" style="max-width:450px">
+<div class="modal-header"><h3><i class="fas fa-user-plus" style="color:var(--primary)"></i> <span id="user-form-title">Tambah User</span></h3><button onclick="closeUserModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<form id="userForm" style="display:flex;flex-direction:column;gap:1rem">
+<div><label class="form-label">Username</label><input type="text" id="u-username" required class="form-input"></div>
+<div><label class="form-label">Password</label><input type="text" id="u-password" required class="form-input"></div>
+<div><label class="form-label">Role</label><select id="u-role" class="form-select" onchange="toggleWilayahByRole(this.value)"><option value="petugas">Petugas</option><option value="admin">Admin</option></select></div>
+<div id="wilayah-container"><label class="form-label">Wilayah (Kelurahan)</label><select id="u-wilayah" class="form-select"><option value="">-- Pilih Kelurahan --</option></select></div>
+<div class="modal-footer" style="margin-top:0.5rem"><button type="button" onclick="closeUserModal()" class="btn btn-outline">Batal</button><button type="submit" class="btn btn-primary">Simpan</button></div>
+</form>
+</div>
+</div>
 
-/* ---- INFO BOX ---- */
-.info-box {
-    background:#f8fafc;
-    border-radius:var(--radius);
-    padding:1rem 1.25rem;
-    font-size:0.75rem;
-    margin-bottom:1rem;
-}
+<!-- MODAL: Confirm -->
+<div id="confirm-modal" class="modal-overlay">
+<div class="modal-card" style="max-width:380px;text-align:center;padding:2.5rem">
+<div id="modal-icon" style="margin-bottom:1.25rem"></div>
+<h3 id="modal-title" style="font-size:1.3rem;font-weight:900;margin-bottom:0.5rem">Konfirmasi</h3>
+<p id="modal-desc" style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;line-height:1.6"></p>
+<!-- Input tanggal pelunasan (hanya tampil saat approve) -->
+<div id="modal-date-container" style="display:none;margin-bottom:1.25rem;text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.75rem;padding:1rem">
+  <label for="modal-tanggal-lunas" style="font-size:0.65rem;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.5rem"><i class="fas fa-calendar-check" style="color:var(--primary);margin-right:5px"></i>Tanggal Pelunasan <span style="color:#ef4444">*</span></label>
+  <input type="date" id="modal-tanggal-lunas" class="form-input" style="font-size:0.9rem;font-weight:700;text-align:center">
+</div>
+<div class="modal-footer"><button onclick="closeModal()" class="btn btn-outline">Batal</button><button id="modal-confirm" class="btn btn-primary">Lanjutkan</button></div>
+</div>
+</div>
 
-/* ---- SESSION LOADING OVERLAY ---- */
-#session-loading {
-    position:fixed; inset:0;
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%);
-    z-index:9999;
-    display:none; align-items:center; justify-content:center;
-    opacity:0;
-    transition: opacity 0.4s ease;
-}
-#session-loading.show {
-    display:flex;
-    opacity:1;
-}
+<!-- MODAL: Rekap Lingkungan -->
+<div id="rekap-lingkungan-modal" class="modal-overlay">
+<div class="modal-card">
+<div class="modal-header"><h3><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i> Rincian Per Lingkungan</h3><button onclick="closeRekapLingkunganModal()" class="modal-close"><i class="fas fa-times-circle"></i></button></div>
+<div class="info-box" style="display:flex;justify-content:space-between">
+<div><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kecamatan</div><div id="rekap-detail-kecamatan" style="font-weight:900">---</div></div>
+<div style="text-align:right"><div style="font-size:0.5rem;font-weight:900;color:#94a3b8;text-transform:uppercase">Kelurahan</div><div id="rekap-detail-kelurahan" style="font-weight:900">---</div></div>
+</div>
+<div class="modal-body">
+<table class="data-table" style="font-size:0.75rem"><thead><tr><th style="padding:0.5rem 0.75rem;text-align:center;width:8%">No</th><th style="padding:0.5rem 0.75rem">Lingkungan</th><th style="padding:0.5rem 0.75rem;text-align:right">Realisasi</th></tr></thead><tbody id="rekap-lingkungan-body"></tbody>
+<tfoot style="background:#f1f5f9"><tr><td colspan="2" style="padding:0.75rem;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Kelurahan</td><td id="rekap-lingkungan-total" style="padding:0.75rem;text-align:right;font-weight:900;color:var(--primary)">Rp 0</td></tr></tfoot></table>
+</div>
+<div class="modal-footer">
+<button onclick="closeRekapLingkunganModal()" class="btn btn-outline">Tutup</button>
+</div>
+</div>
+</div>
 
-/* ---- HIDDEN ---- */
-.hidden { display:none !important; }
+<!-- Fullscreen Report -->
+<div id="fullscreen-preview" class="fullscreen-overlay">
+<div class="report-container">
+<div class="report-toolbar no-print">
+<span><i class="fas fa-print" style="color:var(--primary);margin-right:6px"></i>Pratinjau Dokumen Realisasi</span>
+<div style="display:flex;gap:0.5rem">
+<button onclick="window.print()" class="btn btn-dark btn-sm"><i class="fas fa-print"></i> Cetak</button>
+<button onclick="closeFullscreenReport()" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Tutup</button>
+</div>
+</div>
+<div id="pdf-print-area" class="report-content" style="font-family:'Inter',sans-serif">
+<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:4px double #000;padding-bottom:1rem;margin-bottom:1.5rem">
+<img src="https://i.imgur.com/8q3aaaT.png" alt="Logo" style="width:65px">
+<div style="text-align:center;flex-grow:1;padding:0 1rem">
+<h2 style="font-size:0.95rem;font-weight:900;text-transform:uppercase;margin:0">Pemerintah Kabupaten Majene</h2>
+<h1 style="font-size:1.1rem;font-weight:900;text-transform:uppercase;margin:0.2rem 0 0">Badan Pendapatan Daerah</h1>
+<p style="font-size:0.6rem;font-weight:600;margin-top:0.3rem">Jl. Jenderal Sudirman No. 1 Majene, Sulawesi Barat</p>
+</div>
+<div style="width:65px"></div>
+</div>
+<div style="text-align:center;margin-bottom:1.5rem">
+<h3 style="font-size:0.85rem;font-weight:900;text-decoration:underline;text-transform:uppercase;margin:0">Laporan Realisasi Penerimaan PBB-P2</h3>
+<p id="pdf-report-id" style="font-size:0.65rem;font-weight:700;margin-top:0.3rem;font-family:'JetBrains Mono',monospace"></p>
+</div>
+<table style="width:100%;font-size:0.75rem;margin-bottom:1.5rem;border-collapse:collapse">
+<tr><td style="width:35%;font-weight:900;padding:0.25rem 0">Kecamatan</td><td style="width:3%">:</td><td id="pdf-kecamatan" style="text-transform:uppercase">---</td></tr>
+<tr><td style="font-weight:900;padding:0.25rem 0">Kelurahan / Desa</td><td>:</td><td id="pdf-kelurahan" style="text-transform:uppercase">---</td></tr>
+<tr><td style="font-weight:900;padding:0.25rem 0">Lingkungan / Dusun</td><td>:</td><td id="pdf-lingkungan" style="text-transform:uppercase">---</td></tr>
+<tr><td style="font-weight:900;padding:0.25rem 0">Tanggal Verifikasi</td><td>:</td><td id="pdf-tanggal">---</td></tr>
+</table>
+<table style="width:100%;font-size:0.75rem;border:1px solid #000;border-collapse:collapse;margin-bottom:2rem">
+<thead><tr style="background:#f1f5f9;border-bottom:1px solid #000"><th style="padding:0.5rem;border-right:1px solid #000;width:8%;text-align:center;font-weight:900">No</th><th style="padding:0.5rem;border-right:1px solid #000;width:52%;font-weight:900">Nama WP / NOP</th><th style="padding:0.5rem;text-align:right;font-weight:900">Jumlah Pembayaran</th></tr></thead>
+<tbody id="pdf-table-body" style="font-family:'JetBrains Mono',monospace"></tbody>
+<tfoot><tr style="border-top:1px solid #000;background:#f8fafc"><td colspan="2" style="padding:0.6rem;border-right:1px solid #000;font-weight:900;text-transform:uppercase;font-size:0.7rem">Total Realisasi Kelompok</td><td id="pdf-total-bayar" style="padding:0.6rem;text-align:right;font-weight:900;font-size:0.7rem">Rp 0</td></tr></tfoot>
+</table>
+<div style="display:flex;justify-content:flex-end;margin-top:3rem">
+<div style="text-align:center;width:250px;font-size:0.75rem">
+<p id="pdf-signer-date">Majene, ---</p>
+<p style="font-weight:900;text-transform:uppercase;margin-top:0.25rem">Petugas Penerima Setoran,</p>
+<div style="height:5rem"></div>
+<p id="pdf-signer-name" style="font-weight:900;text-transform:uppercase;text-decoration:underline">---</p>
+<p style="font-size:0.65rem;margin-top:0.15rem">BAPENDA KABUPATEN MAJENE</p>
+</div>
+</div>
+</div>
+</div>
+</div>
 
-/* ---- PRINT ---- */
-@media print {
-    body * { visibility:hidden; }
-    #pdf-print-area, #pdf-print-area * { visibility:visible; }
-    #pdf-print-area {
-        position:absolute; left:0; top:0;
-        width:100%; padding:20mm;
-        background:#fff; color:#000;
-    }
-    .no-print { display:none !important; }
-}
+<!-- MODAL: Idle Warning -->
+<div id="idle-warning-modal" class="modal-overlay" style="z-index:99999">
+<div class="modal-card" style="max-width:360px;text-align:center;padding:2.5rem;border-top:4px solid #f59e0b">
+  <div style="margin-bottom:1.25rem">
+    <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;margin:0 auto">
+      <i class="fas fa-clock" style="font-size:2rem;color:#d97706"></i>
+    </div>
+  </div>
+  <h3 style="font-size:1.2rem;font-weight:900;margin-bottom:0.5rem;color:#1e293b">Sesi Akan Berakhir</h3>
+  <p style="color:#64748b;font-size:0.85rem;line-height:1.6;margin-bottom:1rem">Anda tidak aktif selama 29 menit.<br>Sesi akan otomatis berakhir dalam</p>
+  <div style="font-size:3rem;font-weight:900;color:#d97706;margin-bottom:0.25rem;font-family:'JetBrains Mono',monospace" id="idle-countdown">60</div>
+  <div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:1.75rem">detik</div>
+  <div class="modal-footer">
+    <button onclick="forceLogout()" class="btn btn-outline" style="color:#ef4444;border-color:#ef4444">Logout Sekarang</button>
+    <button onclick="keepSession()" class="btn btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fas fa-check"></i> Tetap Login</button>
+  </div>
+</div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container" class="toast-container"></div>
+
+<script src="app-core.js"></script>
+<script src="app-features.js"></script>
+</body>
+</html>
