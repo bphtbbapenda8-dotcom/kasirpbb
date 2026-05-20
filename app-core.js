@@ -500,9 +500,10 @@ function renderLists(belum, sudah) {
         const g = groupedTransactions[k];
         const isVerif = g.items.every(i => i.status === 'Sedang Diverifikasi');
         const rowBg = isVerif ? 'background:rgba(251,191,36,0.08);' : '';
+        const safeK = k.replace(/'/g, "\\'");
         const actionBtn = isVerif
             ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:0.4rem 0.85rem;border-radius:9999px;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-size:0.7rem;font-weight:900;letter-spacing:0.3px;border:1px solid #fcd34d;white-space:nowrap"><i class="fas fa-clock"></i> Sedang Diverifikasi</span>`
-            : `<button onclick="showGroupDetail('${k}')" class="btn btn-primary btn-sm"><i class="fas fa-list"></i> Rincian</button>`;
+            : `<button onclick="showGroupDetail('${safeK}')" class="btn btn-primary btn-sm"><i class="fas fa-list"></i> Rincian</button>`;
         bB.innerHTML += `<tr style="${rowBg}"><td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${g.wilayah}</td><td style="padding:1rem 1.75rem;font-weight:700;color:#64748b;text-transform:uppercase">${g.lingkungan}</td><td style="padding:1rem 1.75rem;text-align:center;font-weight:900;color:#334155"><span class="badge badge-petugas" style="background:#f1f5f9;color:#475569">${g.items.length} WP</span></td><td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--primary)">${formatIDR(g.totalJumlah)}</td><td style="padding:1rem 1.75rem;text-align:center">${actionBtn}</td></tr>`;
     });
     // Filter riwayat
@@ -526,6 +527,10 @@ function renderLists(belum, sudah) {
     });
     const hKeys = Object.keys(groupedHistoryTransactions);
     sB.innerHTML = hKeys.length ? '' : '<tr><td colspan="5" style="padding:3rem;text-align:center;color:#cbd5e1;font-weight:700;font-size:0.65rem;text-transform:uppercase">Belum ada riwayat</td></tr>';
-    hKeys.forEach(k => { const g = groupedHistoryTransactions[k]; sB.innerHTML += `<tr><td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${g.wilayah}</td><td style="padding:1rem 1.75rem;font-weight:700;color:#64748b;text-transform:uppercase">${g.lingkungan}</td><td style="padding:1rem 1.75rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#94a3b8">${g.timestamp}</td><td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--success)">${formatIDR(g.totalJumlah)}</td><td style="padding:1rem 1.75rem;text-align:center"><button onclick="showHistoryGroupDetail('${k}')" class="btn btn-dark btn-sm"><i class="fas fa-search-plus"></i> Rincian</button></td></tr>`; });
+    hKeys.forEach(k => { 
+        const g = groupedHistoryTransactions[k]; 
+        const safeK = k.replace(/'/g, "\\'");
+        sB.innerHTML += `<tr><td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${g.wilayah}</td><td style="padding:1rem 1.75rem;font-weight:700;color:#64748b;text-transform:uppercase">${g.lingkungan}</td><td style="padding:1rem 1.75rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#94a3b8">${g.timestamp}</td><td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--success)">${formatIDR(g.totalJumlah)}</td><td style="padding:1rem 1.75rem;text-align:center"><button onclick="showHistoryGroupDetail('${safeK}')" class="btn btn-dark btn-sm"><i class="fas fa-search-plus"></i> Rincian</button></td></tr>`; 
+    });
 }
 
