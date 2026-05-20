@@ -180,15 +180,54 @@ function initApp() {
     $('app-view').classList.remove('hidden');
     $('user-display').innerHTML = `<i class="fas fa-user-circle" style="color:var(--primary-light);margin-right:4px"></i>${currentUser.username}`;
     const isAdmin = currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'admin';
+    const isPelunasan = currentUser.role === 'petugas_pelunasan';
+    
+    // Tampilkan/Sembunyikan Menu berdasarkan Role
+    // 1. Menu Umum (Beranda, Cari, Setor, Riwayat, Rekap)
+    document.querySelectorAll('.nav-btn[data-tab="beranda"], .nav-btn[data-tab="bayar"], .nav-btn[data-tab="setor-list"], .nav-btn[data-tab="sudah-setor"], .nav-btn[data-tab="rekap-pembayaran"]')
+        .forEach(b => b.classList.toggle('hidden', isPelunasan));
+    document.querySelectorAll('.mob-btn[data-tab="beranda"], .mob-btn[data-tab="bayar"], .mob-btn[data-tab="setor-list"], .mob-btn[data-tab="sudah-setor"], .mob-btn[data-tab="rekap-pembayaran"]')
+        .forEach(b => b.classList.toggle('hidden', isPelunasan));
+        
     $('nav-verifikasi').classList.toggle('hidden', !isAdmin);
     $('mob-verifikasi').classList.toggle('hidden', !isAdmin);
     $('nav-users').classList.toggle('hidden', !isAdmin);
     $('mob-users').classList.toggle('hidden', !isAdmin);
     $('nav-log-aktivitas').classList.toggle('hidden', !isAdmin);
     $('mob-log-aktivitas').classList.toggle('hidden', !isAdmin);
+    
+    // Menu SISMIOP (Admin & Petugas Pelunasan)
+    const navSismiop = $('nav-pelunasan-sismiop');
+    if (navSismiop) navSismiop.classList.toggle('hidden', !(isAdmin || isPelunasan));
+    const mobSismiop = $('mob-pelunasan-sismiop');
+    if (mobSismiop) mobSismiop.classList.toggle('hidden', !(isAdmin || isPelunasan));
+
+    // Tambahan pembatasan role
+    const navLaporan = $('nav-laporan-nop-baru');
+    if (navLaporan) navLaporan.classList.toggle('hidden', !isAdmin);
+    const mobLaporan = $('mob-laporan-nop-baru');
+    if (mobLaporan) mobLaporan.classList.toggle('hidden', !isAdmin);
+    const manualInput = $('manual-input-wrapper');
+    if (manualInput) {
+        manualInput.classList.toggle('hidden', !isAdmin);
+        // Pastikan checkbox tidak dicentang jika disembunyikan
+        if (!isAdmin) {
+            $('is-manual-input').checked = false;
+            if (typeof toggleManualInput === 'function') toggleManualInput();
+        }
+    }
+
     initDropdowns(); initFilterDropdowns(); initHistoryFilterDropdowns();
     lockWilayahForPetugas(); // kunci wilayah jika petugas
-    refreshData(); switchTab('beranda');
+    
+    // Switch to appropriate initial tab
+    if (isPelunasan) {
+        switchTab('pelunasan-sismiop');
+        refreshData().then(() => loadSismiop());
+    } else {
+        refreshData(); switchTab('beranda');
+    }
+    
     startIdleMonitor(); // mulai pantau idle setelah login
 }
 
@@ -339,6 +378,26 @@ function getKecamatanByKelurahan(kelName) {
 }
 
 // === MANUAL INPUT UI LOGIC ===
+function addBlokRow() {
+    const container = $('dynamic-blok-container');
+    const newRow = document.createElement('div');
+    newRow.className = 'blok-row';
+    newRow.style.cssText = 'display:flex;gap:1rem;align-items:flex-end';
+    newRow.innerHTML = `
+        <div style="flex:1"><label class="form-label">Blok (3 Digit)</label><input type="text" required maxlength="3" class="form-input mono input-blok" placeholder="000" oninput="handleNourutInput()"></div>
+        <div style="flex:2"><label class="form-label">Nomor Urut (Pisah Koma)</label><input type="text" required class="form-input mono input-nourut" placeholder="0001, 0002" oninput="handleNourutInput()"></div>
+        <button type="button" onclick="removeBlokRow(this)" class="btn btn-danger" style="padding:0.75rem" title="Hapus Blok"><i class="fas fa-trash-alt"></i></button>
+    `;
+    container.appendChild(newRow);
+    handleNourutInput();
+}
+
+function removeBlokRow(btn) {
+    const row = btn.closest('.blok-row');
+    if (row) row.remove();
+    handleNourutInput();
+}
+
 function toggleManualInput() {
     const isManual = $('is-manual-input').checked;
     const btn = $('btnCari');
@@ -357,23 +416,31 @@ function toggleManualInput() {
 function handleNourutInput() {
     const isManualInput = $('is-manual-input');
     if (!isManualInput || !isManualInput.checked) return;
-    const urutInput = $('p-nourut').value.trim();
+    
     const container = $('manual-nominals-container');
     container.innerHTML = '';
-    if (!urutInput) return;
     
-    const uruts = urutInput.split(/[, ]+/).filter(x => x.trim());
-    uruts.forEach(urut => {
-        const u = urut.padStart(4, '0');
-        container.innerHTML += `
-            <div style="display:flex;flex-direction:column;gap:0.5rem;padding-bottom:0.75rem;border-bottom:1px solid #e2e8f0;margin-bottom:0.25rem">
-                <label style="font-size:0.75rem;font-weight:900;color:#64748b">Rincian NOP Akhiran <span style="color:var(--primary)">${u}</span></label>
-                <div style="display:grid;grid-template-columns:3fr 2fr;gap:0.5rem">
-                    <input type="text" id="manual-nama-${u}" class="form-input" placeholder="Nama Wajib Pajak" style="padding:0.4rem 0.75rem;border-color:#fcd34d" required>
-                    <input type="number" id="manual-nominal-${u}" class="form-input" placeholder="Nominal Rp..." style="padding:0.4rem 0.75rem;border-color:#fcd34d" required min="1">
+    const blokRows = document.querySelectorAll('.blok-row');
+    
+    blokRows.forEach((row, rowIdx) => {
+        const blokInput = row.querySelector('.input-blok').value.trim();
+        const urutInput = row.querySelector('.input-nourut').value.trim();
+        if (!urutInput) return;
+        
+        const uruts = urutInput.split(/[, ]+/).filter(x => x.trim());
+        uruts.forEach(urut => {
+            const u = urut.padStart(4, '0');
+            const blokDisplay = blokInput ? blokInput.padStart(3, '0') : '...';
+            container.innerHTML += `
+                <div style="display:flex;flex-direction:column;gap:0.5rem;padding-bottom:0.75rem;border-bottom:1px solid #e2e8f0;margin-bottom:0.25rem">
+                    <label style="font-size:0.75rem;font-weight:900;color:#64748b">Rincian NOP Blok <span style="color:var(--primary)">${blokDisplay}</span> Akhiran <span style="color:var(--primary)">${u}</span></label>
+                    <div style="display:grid;grid-template-columns:3fr 2fr;gap:0.5rem">
+                        <input type="text" id="manual-nama-${rowIdx}-${u}" class="form-input" placeholder="Nama Wajib Pajak" style="padding:0.4rem 0.75rem;border-color:#fcd34d" required>
+                        <input type="number" id="manual-nominal-${rowIdx}-${u}" class="form-input" placeholder="Nominal Rp..." style="padding:0.4rem 0.75rem;border-color:#fcd34d" required min="1">
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        });
     });
 }
 
@@ -382,52 +449,65 @@ $('searchForm').onsubmit = async (e) => {
     e.preventDefault();
     const isManual = $('is-manual-input').checked;
     const btn = $('btnCari'), kec = $('p-kecamatan').value, kel = $('p-kelurahan').value;
-    const lin = $('p-lingkungan').value, blok = $('p-blok').value.trim().padStart(3, '0');
-    const urutInput = $('p-nourut').value.trim();
-    if (!urutInput) return;
-    const uruts = urutInput.split(/[, ]+/).filter(x => x.trim());
+    const lin = $('p-lingkungan').value;
     const namaKel = wilayahMajene[kec]?.kels[kel]?.name || '';
+    
+    const blokRows = document.querySelectorAll('.blok-row');
+    if (blokRows.length === 0) return;
     
     btn.disabled = true; 
     btn.innerHTML = '<i class="fas fa-circle-notch animate-spin"></i> MEMPROSES...';
     let added = 0;
     
-    for (let urut of uruts) {
-        const u = urut.padStart(4, '0');
-        const nopClean = `7602${kec}${kel}${blok}${u}0`, nopDot = `76.02.${kec}.${kel}.${blok}-${u}.0`;
+    for (let rowIdx = 0; rowIdx < blokRows.length; rowIdx++) {
+        const row = blokRows[rowIdx];
+        const blokInput = row.querySelector('.input-blok');
+        const urutInputEl = row.querySelector('.input-nourut');
+        if (!blokInput || !urutInputEl) continue;
         
-        if (isManual) {
-            const nominalInput = $(`manual-nominal-${u}`);
-            const namaInput = $(`manual-nama-${u}`);
-            const nominal = nominalInput ? parseInt(nominalInput.value) || 0 : 0;
-            const namaWP = namaInput && namaInput.value.trim() ? namaInput.value.trim() : 'MANUAL - TANPA NAMA';
+        const blok = blokInput.value.trim().padStart(3, '0');
+        const urutInput = urutInputEl.value.trim();
+        if (!urutInput) continue;
+        
+        const uruts = urutInput.split(/[, ]+/).filter(x => x.trim());
+        
+        for (let urut of uruts) {
+            const u = urut.padStart(4, '0');
+            const nopClean = `7602${kec}${kel}${blok}${u}0`, nopDot = `76.02.${kec}.${kel}.${blok}-${u}.0`;
             
-            if (!cartItems.find(c => c.nop === nopClean)) {
-                cartItems.push({ 
-                    nop: nopClean, 
-                    nama: namaWP, 
-                    jumlah: nominal, 
-                    lingkungan: lin, 
-                    wilayah: namaKel,
-                    is_manual: true 
-                });
-                added++;
+            if (isManual) {
+                const nominalInput = $(`manual-nominal-${rowIdx}-${u}`);
+                const namaInput = $(`manual-nama-${rowIdx}-${u}`);
+                const nominal = nominalInput ? parseInt(nominalInput.value) || 0 : 0;
+                const namaWP = namaInput && namaInput.value.trim() ? namaInput.value.trim() : 'MANUAL - TANPA NAMA';
+                
+                if (!cartItems.find(c => c.nop === nopClean)) {
+                    cartItems.push({ 
+                        nop: nopClean, 
+                        nama: namaWP, 
+                        jumlah: nominal, 
+                        lingkungan: lin, 
+                        wilayah: namaKel,
+                        is_manual: true 
+                    });
+                    added++;
+                }
+            } else {
+                try {
+                    const { data, error } = await _supabase.from('sppt2026').select('*').in('NOP', [nopClean, nopDot]).maybeSingle();
+                    if (error) throw error;
+                    if (data) {
+                        if (!cartItems.find(c => c.nop === data.NOP)) {
+                            let raw = 0;
+                            const keys = Object.keys(data), fk = keys.find(k => k.toLowerCase() === 'jumlah');
+                            if (fk) raw = data[fk]; else raw = data['PBB_YG_HARUS_DIBAYAR_'] || data['PBB_YG_HARUS_DIBAYAR'] || data['PBB_DIBAYAR'] || 0;
+                            let cs = String(raw).trim().replace(/Rp/gi, '').trim().replace(/[,.]00$/, '').replace(/[^0-9]/g, '');
+                            cartItems.push({ nop: data.NOP, nama: data.NM_WP_SPPT || data.NAMA_WP || 'TANPA NAMA', jumlah: parseInt(cs) || 0, lingkungan: lin, wilayah: namaKel });
+                            added++;
+                        }
+                    } else showToast(`Blok ${blok} NOP ${u} tidak ditemukan`, "error");
+                } catch (err) { console.error(err); }
             }
-        } else {
-            try {
-                const { data, error } = await _supabase.from('sppt2026').select('*').in('NOP', [nopClean, nopDot]).maybeSingle();
-                if (error) throw error;
-                if (data) {
-                    if (!cartItems.find(c => c.nop === data.NOP)) {
-                        let raw = 0;
-                        const keys = Object.keys(data), fk = keys.find(k => k.toLowerCase() === 'jumlah');
-                        if (fk) raw = data[fk]; else raw = data['PBB_YG_HARUS_DIBAYAR_'] || data['PBB_YG_HARUS_DIBAYAR'] || data['PBB_DIBAYAR'] || 0;
-                        let cs = String(raw).trim().replace(/Rp/gi, '').trim().replace(/[,.]00$/, '').replace(/[^0-9]/g, '');
-                        cartItems.push({ nop: data.NOP, nama: data.NM_WP_SPPT || data.NAMA_WP || 'TANPA NAMA', jumlah: parseInt(cs) || 0, lingkungan: lin, wilayah: namaKel });
-                        added++;
-                    }
-                } else showToast(`NOP ${u} tidak ditemukan`, "error");
-            } catch (err) { console.error(err); }
         }
     }
     
