@@ -8,9 +8,29 @@ function showGroupDetail(key) {
     $('detail-kelurahan').innerText = g.wilayah;
     $('detail-lingkungan').innerText = g.lingkungan;
     $('detail-total-rekap').innerText = formatIDR(g.totalJumlah);
+    
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username.toLowerCase() === 'admin');
+    const thead = $('detail-table-head');
+    if (thead) {
+        thead.innerHTML = isAdmin 
+            ? `<tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th><th style="padding:0.5rem 0.75rem;text-align:center;width:60px">Aksi</th></tr>`
+            : `<tr><th style="padding:0.5rem 0.75rem">Nama WP / NOP</th><th style="padding:0.5rem 0.75rem;text-align:right">Jumlah</th></tr>`;
+    }
+    const tfootLabel = $('detail-tfoot-label');
+    const tfootTotal = $('detail-total-rekap');
+    if (tfootTotal) {
+        tfootTotal.setAttribute('colspan', isAdmin ? '2' : '1');
+    }
+
     const body = $('detail-table-body'); body.innerHTML = '';
     g.items.forEach(item => {
-        body.innerHTML += `<tr><td style="padding:0.6rem 0.75rem"><div style="font-weight:700;color:#334155">${item.nama}</div><div style="font-size:0.6rem;color:#94a3b8;font-weight:700">${item.nop}</div></td><td style="padding:0.6rem 0.75rem;text-align:right;font-weight:700;color:#475569">${formatIDR(item.jumlah)}</td></tr>`;
+        let actionHtml = '';
+        if (isAdmin) {
+            const safeNama = (item.nama || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            const safeKey = key.replace(/'/g, "\\'");
+            actionHtml = `<td style="padding:0.6rem 0.75rem;text-align:center"><button onclick="deleteBelumSetorItem('${item.id}', '${item.nop}', '${safeNama}', ${item.jumlah || 0}, ${!!item.is_manual}, '${safeKey}')" class="btn btn-danger btn-sm" style="padding:0.3rem 0.6rem" title="Hapus Data"><i class="fas fa-trash"></i></button></td>`;
+        }
+        body.innerHTML += `<tr><td style="padding:0.6rem 0.75rem"><div style="font-weight:700;color:#334155">${item.nama}</div><div style="font-size:0.6rem;color:#94a3b8;font-weight:700">${item.nop}</div></td><td style="padding:0.6rem 0.75rem;text-align:right;font-weight:700;color:#475569">${formatIDR(item.jumlah)}</td>${actionHtml}</tr>`;
     });
     // Reset upload field
     $('bukti-bayar-input').value = '';
@@ -19,6 +39,47 @@ function showGroupDetail(key) {
     $('bukti-bayar-info').style.display = 'none';
     $('btn-proses-setor').onclick = () => executeSetorGroup(key);
     $('detail-modal').classList.add('open');
+}
+
+async function deleteBelumSetorItem(id, nop, nama, jumlah, isManual, groupKey) {
+    if (!confirm(`Yakin ingin menghapus data NOP ${nop} (${nama})?\n\n${!isManual ? 'Data ini akan dikembalikan ke tabel tagihan awal (sppt2026).' : 'Ini adalah data input manual dan akan dihapus permanen.'}`)) return;
+    
+    // Disable buttons to prevent double click
+    const buttons = document.querySelectorAll('#detail-table-body button');
+    buttons.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+    
+    try {
+        const { error: e1 } = await _supabase.from('belumsetor').delete().eq('id', id);
+        if (e1) throw e1;
+        
+        if (!isManual) {
+            const { error: e2 } = await _supabase.from('sppt2026').insert({
+                NOP: nop,
+                NM_WP_SPPT: nama,
+                PBB_YG_HARUS_DIBAYAR_: jumlah
+            });
+            if (e2) {
+                console.error("Gagal mengembalikan ke sppt2026", e2);
+                showToast("Dihapus dari keranjang, tapi gagal dikembalikan ke SPPT2026.", "error");
+            }
+        }
+        
+        showToast("Data berhasil dihapus!");
+        logActivity('HAPUS_SETOR', `Menghapus NOP ${nop} dari antrean`, `ID: ${id}`);
+        
+        await refreshData();
+        
+        const g = groupedTransactions[groupKey];
+        if (g && g.items.length > 0) {
+            showGroupDetail(groupKey);
+        } else {
+            closeDetailModal();
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Terjadi kesalahan: " + (err.message || 'Gagal menghapus'), "error");
+        buttons.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    }
 }
 function closeDetailModal() { $('detail-modal').classList.remove('open'); }
 
@@ -455,11 +516,11 @@ function editUser(id, username, password, role, wilayah) {
     showUserForm('Edit User');
 }
 
-// Jika admin, wilayah otomatis 'admin' dan dropdown disembunyikan
+// Jika admin atau petugas_pelunasan, wilayah otomatis 'admin'/kosong dan dropdown disembunyikan
 function toggleWilayahByRole(role) {
     const container = $('wilayah-container');
     if (!container) return;
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'petugas_pelunasan') {
         container.style.display = 'none';
         if ($('u-wilayah')) $('u-wilayah').value = '';
     } else {
@@ -472,7 +533,7 @@ $('userForm').onsubmit = async (e) => {
     const username = $('u-username').value.trim();
     const password = $('u-password').value;
     const role = $('u-role').value;
-    const wilayah = ($('u-role').value === 'admin') ? 'admin' : ($('u-wilayah') ? $('u-wilayah').value : '');
+    const wilayah = (role === 'admin' || role === 'petugas_pelunasan') ? '' : ($('u-wilayah') ? $('u-wilayah').value : '');
     if (!username||!password) { showToast("Isi semua field","error"); return; }
     try {
         if (editingUserId) {
@@ -813,6 +874,173 @@ window.onload = async () => {
         hideLoadingOverlay();
     }
 };
+
+// === SISMIOP ===
+let groupedSismiopInput = {};
+let groupedSismiopSudah = {};
+let currentSismiopKey = null;
+
+function loadSismiop() {
+    const fs = transactions.filter(t => t.status === 'Sudah Setor');
+    
+    const inputList = fs.filter(t => !t.is_sismiop);
+    const sudahList = fs.filter(t => t.is_sismiop);
+    
+    groupedSismiopInput = _groupTransactionsByTime(inputList);
+    groupedSismiopSudah = _groupTransactionsByTime(sudahList);
+    
+    _renderSismiopTable(groupedSismiopInput, 'sismiop-input-body', false);
+    _renderSismiopTable(groupedSismiopSudah, 'sismiop-sudah-body', true);
+}
+
+function _groupTransactionsByTime(list) {
+    const grouped = {};
+    list.forEach(t => {
+        let ds = "N/A", keyTime = "N/A"; 
+        if (t.created_at) { 
+            const d = new Date(t.created_at); 
+            ds = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; 
+            keyTime = `${ds}:${String(d.getSeconds()).padStart(2, '0')}`;
+        }
+        const k = `${t.wilayah || 'Umum'}_${t.lingkungan || 'Umum'}_${keyTime.replace(/[\/ :]/g, '_')}`; 
+        if (!grouped[k]) grouped[k] = { wilayah: t.wilayah || 'Umum', lingkungan: t.lingkungan || 'Umum', timestamp: ds, totalJumlah: 0, items: [] }; 
+        grouped[k].totalJumlah += parseInt(t.jumlah) || 0; 
+        grouped[k].items.push(t);
+    });
+    return grouped;
+}
+
+function _renderSismiopTable(grouped, tbodyId, isSudah) {
+    const tbody = $(tbodyId);
+    if (!tbody) return;
+    const keys = Object.keys(grouped);
+    tbody.innerHTML = keys.length ? '' : '<tr><td colspan="6" style="padding:3rem;text-align:center;color:#cbd5e1;font-weight:700;font-size:0.65rem;text-transform:uppercase">Tidak ada data</td></tr>';
+    
+    keys.forEach(k => {
+        const g = grouped[k];
+        const safeK = k.replace(/'/g, "\\'");
+        
+        const statusBadge = isSudah 
+            ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:0.3rem 0.6rem;border-radius:9999px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#15803d;font-size:0.65rem;font-weight:900;border:1px solid #86efac"><i class="fas fa-check-circle"></i> Sudah Diinput</span>`
+            : `<span style="display:inline-flex;align-items:center;gap:5px;padding:0.3rem 0.6rem;border-radius:9999px;background:linear-gradient(135deg,#fee2e2,#fecaca);color:#b91c1c;font-size:0.65rem;font-weight:900;border:1px solid #f87171"><i class="fas fa-exclamation-circle"></i> Belum Diinput</span>`;
+            
+        tbody.innerHTML += `<tr><td style="padding:1rem 1.75rem;font-weight:900;text-transform:uppercase">${g.wilayah}</td><td style="padding:1rem 1.75rem;font-weight:700;color:#64748b;text-transform:uppercase">${g.lingkungan}</td><td style="padding:1rem 1.75rem;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:#94a3b8">${g.timestamp}</td><td style="padding:1rem 1.75rem;text-align:right;font-weight:900;color:var(--primary)">${formatIDR(g.totalJumlah)}</td><td style="padding:1rem 1.75rem;text-align:center">${statusBadge}</td><td style="padding:1rem 1.75rem;text-align:center"><button onclick="showSismiopDetail('${safeK}', ${isSudah})" class="btn btn-dark btn-sm"><i class="fas fa-search-plus"></i> Rincian</button></td></tr>`;
+    });
+}
+
+function switchSismiopTab(tab) {
+    if (tab === 'input') {
+        $('btn-tab-sismiop-input').classList.add('active');
+        $('btn-tab-sismiop-input').style.borderBottom = '2px solid var(--primary)';
+        $('btn-tab-sismiop-input').style.color = 'var(--primary)';
+        $('btn-tab-sismiop-input').style.fontWeight = '900';
+        
+        $('btn-tab-sismiop-sudah').classList.remove('active');
+        $('btn-tab-sismiop-sudah').style.borderBottom = 'none';
+        $('btn-tab-sismiop-sudah').style.color = '#94a3b8';
+        $('btn-tab-sismiop-sudah').style.fontWeight = '700';
+        
+        $('sismiop-input-container').classList.remove('hidden');
+        $('sismiop-sudah-container').classList.add('hidden');
+    } else {
+        $('btn-tab-sismiop-sudah').classList.add('active');
+        $('btn-tab-sismiop-sudah').style.borderBottom = '2px solid var(--primary)';
+        $('btn-tab-sismiop-sudah').style.color = 'var(--primary)';
+        $('btn-tab-sismiop-sudah').style.fontWeight = '900';
+        
+        $('btn-tab-sismiop-input').classList.remove('active');
+        $('btn-tab-sismiop-input').style.borderBottom = 'none';
+        $('btn-tab-sismiop-input').style.color = '#94a3b8';
+        $('btn-tab-sismiop-input').style.fontWeight = '700';
+        
+        $('sismiop-sudah-container').classList.remove('hidden');
+        $('sismiop-input-container').classList.add('hidden');
+    }
+}
+
+function showSismiopDetail(key, isSudah) {
+    currentSismiopKey = key;
+    const g = isSudah ? groupedSismiopSudah[key] : groupedSismiopInput[key];
+    if (!g) return;
+    
+    const items = g.items.map(item => {
+        let blok = "N/A", urut = "N/A";
+        const n = (item.nop || '').replace(/[^0-9]/g, '');
+        if (n.length === 18) {
+            blok = n.substring(10, 13);
+            urut = n.substring(13, 17);
+        }
+        return { ...item, blok, urut, urutNum: parseInt(urut) || 99999, blokNum: parseInt(blok) || 999 };
+    });
+    
+    items.sort((a, b) => {
+        if (a.blokNum !== b.blokNum) return a.blokNum - b.blokNum;
+        return a.urutNum - b.urutNum;
+    });
+    
+    $('sismiop-detail-info').innerText = `Kelurahan: ${g.wilayah} | Lingkungan: ${g.lingkungan} | Waktu Setor: ${g.timestamp}`;
+    
+    const tbody = $('sismiop-detail-table-body');
+    tbody.innerHTML = '';
+    items.forEach((item, idx) => {
+        tbody.innerHTML += `<tr>
+            <td style="text-align:center;font-weight:900;color:#94a3b8">${idx + 1}</td>
+            <td style="text-align:center;font-weight:900;color:#334155">${item.blok}</td>
+            <td style="text-align:center;font-weight:900;color:#334155;font-family:'JetBrains Mono',monospace">${item.urut}</td>
+            <td style="font-weight:700;color:#475569"><div style="color:#0f172a;font-weight:900">${item.nama}</div><div style="font-size:0.65rem;color:#94a3b8;margin-top:2px;font-family:'JetBrains Mono',monospace">${item.nop}</div></td>
+            <td style="text-align:right;font-weight:900;color:#475569">${formatIDR(item.jumlah)}</td>
+        </tr>`;
+    });
+    
+    $('sismiop-detail-total').innerText = formatIDR(g.totalJumlah);
+    
+    const btnSudah = $('btn-sismiop-sudah-input');
+    if (isSudah) {
+        btnSudah.style.display = 'none';
+    } else {
+        btnSudah.style.display = 'inline-flex';
+        btnSudah.onclick = () => executeSismiopPelunasan(key);
+    }
+    
+    $('app-view').classList.add('hidden');
+    $('sismiop-detail-view').classList.remove('hidden');
+}
+
+function closeSismiopDetail() {
+    $('sismiop-detail-view').classList.add('hidden');
+    $('app-view').classList.remove('hidden');
+}
+
+async function executeSismiopPelunasan(key) {
+    const g = groupedSismiopInput[key];
+    if (!g) return;
+    
+    if (!confirm('Apakah Anda telah melakukan pelunasan ke aplikasi SISMIOP untuk seluruh NOP ini?')) return;
+    
+    showLoadingOverlay();
+    const loadingText = document.querySelector('#session-loading p');
+    if (loadingText) loadingText.innerText = "Memproses pelunasan SISMIOP...";
+    
+    try {
+        const ids = g.items.map(i => i.id);
+        const { error } = await _supabase.from('belumsetor').update({ is_sismiop: true }).in('id', ids);
+        if (error) throw error;
+        
+        logActivity('PELUNASAN_SISMIOP', `Pelunasan ${ids.length} NOP ke SISMIOP`, `${g.wilayah} / ${g.lingkungan}`);
+        
+        await refreshData();
+        loadSismiop();
+        
+        hideLoadingOverlay();
+        showToast("Pelunasan berhasil dikonfirmasi!");
+        closeSismiopDetail();
+        switchSismiopTab('sudah');
+        
+    } catch (err) {
+        hideLoadingOverlay();
+        showToast("Terjadi kesalahan: " + (err.message || 'Gagal update data'), "error");
+    }
+}
 
 // === LOG AKTIVITAS (Admin View) ===
 let logDataCache = [];
